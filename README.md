@@ -292,11 +292,15 @@ analysis, which is why it was cheap to defer.
 docker compose up -d      # bolt on 7687, browser on 7474, neo4j/codegraphify
 ```
 
-**Known issue on this machine:** the Docker daemon resolves the registry over
-IPv6, which is unreachable here, so the image pull fails
-(`network is unreachable`). The registry is reachable over IPv4. Fixing it means
-setting daemon-level config (`/etc/docker/daemon.json`) as root, which has not
-been done. The same IPv6 preference affects `curl`, hence `-4` in the setup steps.
+Verified working: Neo4j 5.26 community, Bolt reachable from the Python driver,
+constraints creatable.
+
+**Note on flaky networking here.** This machine has IPv6 enabled with no global
+IPv6 connectivity (link-local and loopback only, no default route), and DNS is
+intermittent. An image pull and the .NET SDK download each failed once with
+`network is unreachable` or `Could not resolve host`, then succeeded unchanged on
+retry. If a download fails, retry it before concluding anything is misconfigured;
+`curl -4` forces IPv4 when a retry is not enough.
 
 ## Integration
 
