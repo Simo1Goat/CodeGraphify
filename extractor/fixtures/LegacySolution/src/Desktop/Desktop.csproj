@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- SDK-style but Windows-only: a modern project can still be unanalyzable on
+       Linux because of its framework, not its project format. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Acme.Desktop</AssemblyName>
+  </PropertyGroup>
+</Project>

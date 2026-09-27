@@ -9,6 +9,7 @@ for the design this implements.
 
 | Stage | State |
 |---|---|
+| Preflight probe (what kind of codebase is this?) | done |
 | Stage 1 — Walk (repository + compilation inventory) | done |
 | Stage 2 — Parse / declarations | not started |
 | Stage 3 — Resolve / calls | not started |
@@ -17,14 +18,17 @@ for the design this implements.
 ## Layout
 
 ```
-app/                  Python backend
+app/                  Python backend (a library; it does not own an app)
   contract/           the graph contract (source of truth) + identity policy
+  preflight.py        classify a .NET codebase without MSBuild
   extractor_runner.py subprocess bridge and the fallback decision
+  fallback.py         the seam the tree-sitter engine plugs into
 extractor/            the Roslyn extractor (.NET 8 console app)
-  fixtures/           SampleSolution: the hard cases, used by every test
+  fixtures/           SampleSolution (modern) and LegacySolution (net48/WPF)
 contract/schema/      JSON Schema generated from app/contract/models.py
+docs/INTEGRATION.md   how to merge this into the backend
 scripts/              environment, publish and schema helpers
-tests/                contract, inventory and decision-table tests
+tests/                contract, inventory, degradation and decision-table tests
 ```
 
 ## Setup
@@ -43,6 +47,22 @@ Python dependencies (this repo uses `uv`; the venv has no `pip`):
 ```bash
 uv pip install -e '.[dev]'
 ```
+
+## Check a codebase before scanning it
+
+Answers "can this host analyze this repo at all" in milliseconds, with no SDK, no
+restore and no MSBuild — so it works on a codebase the extractor cannot open:
+
+```bash
+.venv/bin/python -m app.preflight /path/to/codebase --per-project
+# exit 0 linux-ok · 1 mixed · 2 needs-windows · 3 unknown
+```
+
+It reports project style (SDK-style or legacy non-SDK), target frameworks
+(normalizing `v4.8` to `net48`), whether Windows is required and why, and whether
+each project has been restored. Worth running first: a `.NET Framework` or
+WPF/WinForms project cannot resolve its references on Linux, and that shows up as a
+verdict here rather than as a mysteriously empty graph later.
 
 ## Run a scan
 
@@ -170,10 +190,36 @@ IPv6, which is unreachable here, so the image pull fails
 setting daemon-level config (`/etc/docker/daemon.json`) as root, which has not
 been done. The same IPv6 preference affects `curl`, hence `-4` in the setup steps.
 
-## Open questions
+## Integration
 
-- Where does the existing FastAPI backend and tree-sitter fallback live? This
-  repo contained only the context document, so the orchestration layer here is
-  new and the fallback is not yet wired to anything.
-- Is the codebase to be analyzed SDK-style or legacy .NET Framework? That decides
-  Linux container versus Windows host.
+The FastAPI backend and the tree-sitter analyzer live in a separate repository, to
+be merged later. Everything here is therefore a library: nothing imports from the
+backend and nothing constructs a `FastAPI` app. The seam the tree-sitter engine
+plugs into is declared as a Protocol in [app/fallback.py](app/fallback.py) and
+exercised with a stub in `tests/test_fallback_seam.py`.
+
+See [docs/INTEGRATION.md](docs/INTEGRATION.md) for what each side provides and the
+three places they meet.
+
+## Degradation
+
+The extractor must never report success on a codebase it could not resolve — a
+false `semantic` would earn a stale sweep and delete the real graph. Verified
+against `extractor/fixtures/LegacySolution`, which cannot be analyzed on Linux by
+design:
+
+- A compilation without a core library is detected directly (Roslyn returns an
+  error symbol for `System.Object`) rather than by counting error codes, and marks
+  the project degraded.
+- Projects MSBuild failed to evaluate are excluded from the analyzed scope.
+- Diagnostics say what to do (`restore`, or use a Windows host), not merely that
+  something failed.
+- A project MSBuild could not evaluate still gets a real target framework, read
+  from the `.csproj`, because `unknown` in a node key would make two such projects
+  collide.
+
+## Open question
+
+The target codebase is known only to be ".NET". If it is legacy .NET Framework or
+WPF/WinForms it needs a Windows host; if it is SDK-style, a Linux container is
+fine. Run the preflight probe against it to find out — that is what it is for.

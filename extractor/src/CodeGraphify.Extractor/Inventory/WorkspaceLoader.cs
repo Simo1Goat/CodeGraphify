@@ -40,6 +40,14 @@ public sealed class WorkspaceLoadResult
 
     public List<Contract.Diagnostic> Diagnostics { get; } = [];
 
+    /// <summary>
+    /// Raw MSBuild failure text, kept so a failure can be attributed to the
+    /// project it names. MSBuildWorkspace reports these without telling us which
+    /// project they belong to, and a project MSBuild could not evaluate must not
+    /// be counted as analyzed.
+    /// </summary>
+    public List<string> WorkspaceFailureMessages { get; } = [];
+
     public string? SolutionPath { get; set; }
 }
 
@@ -122,6 +130,11 @@ public sealed class WorkspaceLoader
                 Message = e.Diagnostic.Message,
             });
 
+            if (e.Diagnostic.Kind == WorkspaceDiagnosticKind.Failure)
+            {
+                result.WorkspaceFailureMessages.Add(e.Diagnostic.Message);
+            }
+
             if (_options.Verbose)
             {
                 _log.WriteLine($"[workspace] {e.Diagnostic.Kind}: {e.Diagnostic.Message}");
@@ -149,6 +162,7 @@ public sealed class WorkspaceLoader
 
         GroupIntoVariants(projects, result);
         await CompileAsync(result, cancellationToken);
+        AttributeWorkspaceFailures(result);
         return result;
     }
 
@@ -242,7 +256,96 @@ public sealed class WorkspaceLoader
             .Select(NormalizeFrameworkSymbol)
             .FirstOrDefault(LooksLikeTargetFramework);
 
-        return frameworkSymbol ?? "unknown";
+        if (frameworkSymbol is not null)
+        {
+            return frameworkSymbol;
+        }
+
+        // 4. MSBuild failed to evaluate this project, so none of the above are
+        //    populated. Read the .csproj directly rather than let "unknown" into
+        //    a node key, where it would be indistinguishable between projects.
+        return ReadTargetFrameworkFromProjectFile(project.FilePath) ?? "unknown";
+    }
+
+    /// <summary>
+    /// The declared target framework straight out of the project XML.
+    ///
+    /// A deliberately shallow read: no MSBuild evaluation, no conditions, no
+    /// imported props. It exists only so a project MSBuild could not load still
+    /// gets a meaningful identity, and such a project is already marked degraded.
+    /// The equivalent Python implementation is app/preflight.py.
+    /// </summary>
+    private static string? ReadTargetFrameworkFromProjectFile(string? projectFilePath)
+    {
+        if (projectFilePath is null || !File.Exists(projectFilePath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var document = System.Xml.Linq.XDocument.Load(projectFilePath);
+            var properties = document
+                .Descendants()
+                .Where(e => string.Equals(e.Name.LocalName, "PropertyGroup", StringComparison.OrdinalIgnoreCase))
+                .SelectMany(group => group.Elements());
+
+            string? single = null;
+            string? plural = null;
+            string? legacy = null;
+
+            foreach (var property in properties)
+            {
+                var value = property.Value.Trim();
+                if (value.Length == 0)
+                {
+                    continue;
+                }
+
+                switch (property.Name.LocalName.ToLowerInvariant())
+                {
+                    case "targetframework":
+                        single ??= value;
+                        break;
+                    case "targetframeworks":
+                        plural ??= value;
+                        break;
+                    case "targetframeworkversion":
+                        legacy ??= value;
+                        break;
+                }
+            }
+
+            if (single is not null)
+            {
+                return single;
+            }
+
+            if (plural is not null)
+            {
+                // Multi-targeting: without MSBuild we cannot tell which variant
+                // this project object was meant to be, so take the first.
+                var first = plural.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .FirstOrDefault();
+                if (first is not null)
+                {
+                    return first;
+                }
+            }
+
+            // v4.8 -> net48, matching NormalizeLegacyFrameworkVersion in the probe.
+            if (legacy is not null)
+            {
+                var digits = new string(legacy.Where(char.IsDigit).ToArray());
+                return digits.Length > 0 ? $"net{digits}" : legacy;
+            }
+
+            return null;
+        }
+        catch (Exception e) when (e is System.Xml.XmlException or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     /// <summary>NET8_0 and NETSTANDARD2_0 identify a framework; NET, NETCOREAPP
@@ -329,6 +432,26 @@ public sealed class WorkspaceLoader
                         continue;
                     }
 
+                    if (!HasUsableCoreLibrary(compilation))
+                    {
+                        // No corelib means no System.Object, so nothing resolves:
+                        // not a partial result, an unusable one. This is what an
+                        // unrestored project or a .NET Framework project on Linux
+                        // looks like from here.
+                        variant.IsDegraded = true;
+                        result.Diagnostics.Add(new Contract.Diagnostic
+                        {
+                            Severity = Contract.Severities.Error,
+                            Code = "NO_CORELIB",
+                            Message =
+                                $"{project.ProjectKey} ({variant.TargetFramework}) compiled without a " +
+                                "core library, so no symbol can be resolved. Usually an unrestored " +
+                                "project, or a .NET Framework / Windows-only project being analyzed on " +
+                                "a machine without the matching targeting pack.",
+                            ProjectKey = project.ProjectKey,
+                        });
+                    }
+
                     InspectDiagnostics(project, variant, compilation, result);
                 }
                 catch (Exception e) when (e is not OperationCanceledException)
@@ -347,6 +470,52 @@ public sealed class WorkspaceLoader
     }
 
     /// <summary>
+    /// Whether the compilation has a core library at all.
+    ///
+    /// Asking Roslyn for System.Object is the reliable form of this question: a
+    /// compilation without corelib hands back an error symbol, and every
+    /// subsequent resolution is meaningless. Counting error codes is not
+    /// equivalent -- the codes differ by what the code happens to mention.
+    /// </summary>
+    private static bool HasUsableCoreLibrary(Compilation compilation) =>
+        compilation.GetSpecialType(SpecialType.System_Object).TypeKind != TypeKind.Error;
+
+    /// <summary>Marks every project MSBuild failed to evaluate as degraded.</summary>
+    private static void AttributeWorkspaceFailures(WorkspaceLoadResult result)
+    {
+        if (result.WorkspaceFailureMessages.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var project in result.Projects)
+        {
+            var failed = result.WorkspaceFailureMessages.Any(
+                message => message.Contains(project.ProjectPath, StringComparison.OrdinalIgnoreCase));
+
+            if (!failed)
+            {
+                continue;
+            }
+
+            foreach (var variant in project.Variants)
+            {
+                variant.IsDegraded = true;
+            }
+
+            result.Diagnostics.Add(new Contract.Diagnostic
+            {
+                Severity = Contract.Severities.Error,
+                Code = "MSBUILD_FAILED",
+                Message =
+                    $"MSBuild could not fully evaluate {project.ProjectKey}, so its references and " +
+                    "compile items are incomplete. The project is excluded from the analyzed scope.",
+                ProjectKey = project.ProjectKey,
+            });
+        }
+    }
+
+    /// <summary>
     /// Missing references are the failure that matters: without them Roslyn
     /// cannot resolve calls into those assemblies, so the scan is degraded even
     /// though it "succeeded". Ordinary code errors do not degrade it, because
@@ -358,7 +527,9 @@ public sealed class WorkspaceLoader
         Compilation compilation,
         WorkspaceLoadResult result)
     {
-        var missingReferenceCodes = new[] { "CS0246", "CS0234", "CS0012", "CS0400" };
+        // CS0518 (predefined type not defined) is included because it is what a
+        // missing core library actually produces.
+        var missingReferenceCodes = new[] { "CS0246", "CS0234", "CS0012", "CS0400", "CS0518" };
         var errors = compilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToList();
