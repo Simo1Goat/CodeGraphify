@@ -79,6 +79,7 @@ public static class Program
         var errors = new List<string>();
         var analyzed = new List<string>();
         var failed = new List<string>();
+        var declarationCount = 0;
         AnalysisMode mode;
 
         try
@@ -95,6 +96,25 @@ public static class Program
             var emitter = new Inventory.InventoryEmitter(options, repoRoot, output);
             emitter.EmitRepository(files, usedGit, loaded.SolutionPath);
             emitter.EmitProjects(loaded);
+
+            // Stage 2: declarations, for every variant that produced a usable
+            // compilation. A degraded variant is skipped rather than half-emitted:
+            // without a core library its symbols resolve to error types, and
+            // recording those would put fabricated declarations in the graph.
+            var declarations = new Symbols.DeclarationEmitter(options, repoRoot, output);
+            foreach (var project in loaded.Projects)
+            {
+                foreach (var variant in project.Variants.Where(v => !v.IsDegraded))
+                {
+                    declarations.Emit(project, variant);
+                }
+            }
+
+            declarationCount = declarations.DeclarationCount;
+            if (options.Verbose)
+            {
+                Console.Error.WriteLine($"[declarations] {declarationCount} types and members");
+            }
 
             foreach (var diagnostic in loaded.Diagnostics)
             {
@@ -156,6 +176,7 @@ public static class Program
                 ["diagnostics"] = output.DiagnosticCount,
                 ["projects_analyzed"] = analyzed.Count,
                 ["projects_failed"] = failed.Count,
+                ["declarations"] = declarationCount,
             },
             OutputFiles = output.DescribeFiles(),
             Errors = [.. errors],

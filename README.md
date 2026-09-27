@@ -11,7 +11,7 @@ for the design this implements.
 |---|---|
 | Preflight probe (what kind of codebase is this?) | done |
 | Stage 1 — Walk (repository + compilation inventory) | done |
-| Stage 2 — Parse / declarations | not started |
+| Stage 2 — Parse / declarations | done |
 | Stage 3 — Resolve / calls | not started |
 | Stage 4 — Write (Neo4j) | not started |
 
@@ -134,6 +134,29 @@ compile.
 
 **Configuration** — `Debug` by default, and part of a variant's identity, because
 it changes `DefineConstants` and so changes which syntax is active.
+
+**Declaration walk** — the *symbol* tree (`compilation.Assembly.GlobalNamespace`),
+not the syntax trees. Both find the same declarations, but the symbol tree visits
+each symbol once, so a partial class spread over several files is naturally one
+node with several declaring references rather than two nodes to merge afterwards.
+
+**Two containment edges, meaning different things:**
+
+- `CONTAINS` — lexical nesting: namespace in namespace, type in namespace, nested
+  type in type.
+- `DECLARES` — a declaration site: the type that declares a member, and the file a
+  type is declared in. A partial type gets one `DECLARES` edge per file, which is
+  how "where is this class defined" stays answerable when `file_path` can only
+  name one.
+
+**What is deliberately not a node** — property and event accessors (the `Property`
+or `Event` node represents them; emitting both doubles the member count and splits
+calls across two nodes), property backing fields, and parameters. Methods carry
+`signature`, `parameter_types` and arity as metadata instead.
+
+**What is a node despite being synthesized** — a record's positional properties.
+They are implicitly declared, so a blanket skip of synthesized members would drop
+the entire public surface of every positional record.
 
 ## Deployment notes
 
