@@ -14,7 +14,7 @@ for the design this implements.
 | Stage 2 — Parse / declarations | done |
 | Stage 3 — Resolve / calls | done |
 | Stage 4 — Type model | done |
-| Stage 5 — Write (Neo4j) | not started |
+| Stage 5 — Write (Neo4j) | done |
 
 ## Layout
 
@@ -90,6 +90,23 @@ result = run_extractor(
 if result.may_sweep:       # only ever true for a complete semantic scan
     ...
 ```
+
+## Ingest into Neo4j
+
+```python
+from app.extractor_runner import run_extractor
+from app.neo4j_writer import Neo4jWriter
+
+result = run_extractor(input_path="Your.sln", output_dir="/tmp/scan", repo_id="your-repo")
+
+with Neo4jWriter.connect() as writer:
+    writer.apply_schema()          # idempotent; required before a load
+    report = writer.ingest(result) # sweeps only if the scan qualifies
+    print(report.summary())
+```
+
+Connection comes from `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`, `NEO4J_DATABASE`,
+defaulting to the local `docker compose` instance.
 
 ## Tests
 
@@ -266,6 +283,60 @@ The mode drives what the caller may do — `app/extractor_runner.py`, one table:
 | 0 | `syntax-only` | ingest with reduced trust, no sweep |
 | ≠0 | `failed` / unparseable | fall back to tree-sitter |
 
+## The writer
+
+**Labels.** Every node carries `:CodeEntity` plus a label for its kind. The shared
+label is what the uniqueness constraint and the sweep work against, so both are one
+indexed operation; the kind label makes the graph readable and lets queries narrow
+cheaply.
+
+Neo4j 5.26 cannot parameterise a label or relationship type, so kinds are
+interpolated into Cypher — and therefore validated against the contract enums
+first. That check is the only thing between the payload and Cypher injection, so
+nothing else may build a statement from a kind.
+
+**Identity.** Nodes MERGE on `id`; relationships MERGE on an `edge_key` that
+includes the evidence span, so one call site is one edge and the same caller
+calling the same target on two lines stays two facts. Relationship uniqueness
+constraints are Enterprise-only, so identity rests on that key plus indexes that
+keep the MERGE from scanning.
+
+**Ingest is streamed and batched** from JSONL, grouped by kind, so neither the
+process nor the driver ever holds the whole graph.
+
+**A missing endpoint is counted, not silently dropped** — and never MERGE'd, which
+would invent a blank node. A non-zero skip count means the extractor and the writer
+disagree about identity, which is worth knowing loudly.
+
+**Every scan leaves a `:Scan` node**, including a failed or partial one, so "why is
+this project missing from the graph" still has an answer after the manifest's temp
+directory is gone.
+
+### The stale sweep
+
+The only destructive operation in the system, so it is guarded in code rather than
+just documented:
+
+- It runs only for a complete `semantic` scan. Asking for it on any other kind
+  **raises** — the guard exists for the caller who is sure, because being wrong
+  deletes real data.
+- It is scoped to the projects the scan actually analyzed. A scan of one project
+  cannot delete another's graph, and an empty scope raises rather than meaning
+  "everything".
+- **Relationships are swept in their own right**, not only via `DETACH DELETE`. The
+  commonest edit removes a call while leaving both methods in place, so the edge is
+  stale while its endpoints are current.
+- Nodes with no `project_key` — files, namespaces, referenced assemblies — are
+  shared and left alone. Judging one stale would need proof no other project still
+  uses it.
+- Deletes are batched, so a sweep after a large refactor does not build one enormous
+  transaction.
+
+`DEPENDS_ON` is **derived** after the sweep, as context §7 asks, and reconciles its
+own stale edges. It is excluded from the observation sweep: being recomputed every
+scan, it is stale by scan id every time, and sweeping it would report phantom
+deletions on an unchanged rescan.
+
 ## What the graph can answer now
 
 Stages 1–4 together make dispatch answerable. A `CALLS_INTERFACE` edge gives the
@@ -285,6 +356,21 @@ gives both overloads all six implementations.
 
 Phase 2's `MAY_DISPATCH_TO` is a materialization of that traversal rather than a new
 analysis, which is why it was cheap to defer.
+
+In Cypher, against the loaded graph:
+
+```cypher
+MATCH (caller:Method {name: 'RunAll'})-[call:CALLS_INTERFACE]->(contract:Method)
+OPTIONAL MATCH (impl)-[:IMPLEMENTS_MEMBER]->(contract)
+RETURN call.start_line, contract.signature, collect(DISTINCT impl.declaring_type)
+```
+
+Cross-project dependency, rolled up:
+
+```cypher
+MATCH (source:Project)-[d:DEPENDS_ON]->(target:Project)
+RETURN source.name, target.name, d.weight
+```
 
 ## Neo4j
 
