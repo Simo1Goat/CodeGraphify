@@ -117,6 +117,46 @@ defaulting to the local `docker compose` instance.
 They build the fixture solution and run real scans, so they need the SDK. They
 skip rather than fail when it is missing.
 
+## Validated on a real codebase
+
+Scanned [eShopOnWeb](https://github.com/dotnet-architecture/eShopOnWeb) (Microsoft's
+ASP.NET reference application: 10 projects, 254 C# files) — `semantic`, 10/10
+projects, no dangling edges, ~21s and ~390 MB peak, ingesting to 3,913 nodes and
+15,530 relationships in ~18s cold / ~5s warm. A second scan of unchanged source
+swept **0 nodes and 0 relationships**, which is the id-stability property the whole
+sweep design rests on.
+
+Five real defects came out of that exercise, none of which the fixture could have
+surfaced:
+
+| Found | Why it mattered |
+|---|---|
+| Target framework read only from `.csproj` | eShopOnWeb declares it in `Directory.Packages.props`. With no framework found, the Windows checks had nothing to match, so **a Windows-only repo that centralises its TFM was reported `linux-ok`** |
+| NuGet advisories (`NU1902/3`) treated as MSBuild failures | Degraded 3 healthy projects → `partial-semantic` → **sweep withheld on any repo containing a flagged package** |
+| Source generators never run | See below — 60% of the call graph was missing |
+| Generated trees not inventoried | 63 dangling `DECLARES` edges once generators started running |
+| Generator output duplicated | `CS0757`/`CS0121`: every generated partial implemented twice, every call to one ambiguous |
+
+### Source generators
+
+MSBuildWorkspace loads a project's generator references but never runs them:
+`GetCompilationAsync` returns only hand-written files, and
+`GetSourceGeneratedDocumentsAsync` returns nothing. On eShopOnWeb that was eleven
+generators loaded and zero documents produced.
+
+Every type declared in a `.razor` or `.cshtml` file is generator output, so this is
+not a corner case — running them changed the scan from `partial-semantic` to
+`semantic` and took the call count from 2,800 to **6,963**, with 4,030 calls coming
+from 386 members declared in generated views.
+
+Two things were needed to make it work. The generators need the MSBuild-provided
+configuration, which MSBuild writes to a generated `.editorconfig` that the
+workspace loads — so it is parsed and handed back to them. And the Razor SDK ships
+a global config (`RazorSourceGenerator.razorencconfig`) setting
+`build_property.SuppressRazorSourceGenerator = true`, which exists so an **IDE** can
+stand the generator down because it runs Razor itself. We are not an IDE, so that
+one property is overridden.
+
 ## Decisions taken
 
 These were open in the context document. Each is implemented in one place.
@@ -421,3 +461,13 @@ design:
 The target codebase is known only to be ".NET". If it is legacy .NET Framework or
 WPF/WinForms it needs a Windows host; if it is SDK-style, a Linux container is
 fine. Run the preflight probe against it to find out — that is what it is for.
+
+## Operational notes
+
+- **The first scan after an SDK or workload change can be ~50× slower** — 713s
+  against 13s on the same solution, while MSBuild and NuGet caches rebuild. A short
+  subprocess timeout would misread that as failure and fall back to tree-sitter for
+  no reason; the default is an hour.
+- **A degraded scan sometimes means "retry", not "the code is broken."** A transient
+  network failure during restore produces missing references, which is correctly
+  reported as `partial-semantic`. Worth distinguishing in the orchestration layer.

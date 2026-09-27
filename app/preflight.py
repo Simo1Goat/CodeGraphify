@@ -58,6 +58,11 @@ class ProjectProbe:
     restored: bool
     windows_reasons: tuple[str, ...]
     parse_error: str | None = None
+    target_framework_source: str | None = None
+    """Which file the target framework was read from -- the project itself, or an
+    imported directory-level props file. Worth reporting: when it is missing, this
+    says where to look."""
+
 
     @property
     def needs_windows(self) -> bool:
@@ -141,21 +146,122 @@ def probe_project(project_path: Path, repo_root: Path) -> ProjectProbe:
         )
 
     root = tree.getroot()
-    properties = _read_properties(root)
     style = _classify_style(root)
+
+    own_properties = _read_properties(root)
+    imported, imported_from = _imported_properties(project_path, repo_root)
+
+    # The project's own values win over anything it imports.
+    properties = {**imported, **own_properties}
+
     frameworks = _read_target_frameworks(properties)
-    output_type = properties.get("outputtype")
+    source: str | None = None
+    if frameworks:
+        source = "project" if _read_target_frameworks(own_properties) else imported_from
 
     return ProjectProbe(
         project_key=project_key,
         style=style,
         target_frameworks=frameworks,
         assembly_name=properties.get("assemblyname"),
-        output_type=output_type,
+        output_type=properties.get("outputtype"),
         uses_packages_config=(project_path.parent / "packages.config").exists(),
         restored=_is_restored(project_path, style),
         windows_reasons=_windows_reasons(properties, frameworks, style),
+        target_framework_source=source,
     )
+
+
+#: Files MSBuild and NuGet import automatically from a project's ancestor
+#: directories. Modern repos put the target framework and package versions here
+#: rather than in each project, so a probe that reads only .csproj files sees
+#: nothing -- and then cannot tell a Windows-only repo from a portable one.
+_AUTO_IMPORTED_FILES = (
+    "Directory.Build.props",
+    "Directory.Packages.props",
+    "Directory.Build.targets",
+)
+
+
+def _imported_properties(
+    project_path: Path, repo_root: Path
+) -> tuple[dict[str, str], str | None]:
+    """Properties from directory-level files, and which file they came from.
+
+    Walks from the project's own directory up to the repository root, applying
+    farther ancestors first so the nearest wins -- an approximation of MSBuild's
+    evaluation, which is enough for a survey and needs no MSBuild. Explicit
+    ``<Import>`` of a sibling .props file is followed too, one level deep.
+    """
+    properties: dict[str, str] = {}
+    source: str | None = None
+
+    directories: list[Path] = []
+    current = project_path.parent.resolve()
+    root = repo_root.resolve()
+    while True:
+        directories.append(current)
+        if current == root or current.parent == current:
+            break
+        if root not in current.parents:
+            break
+        current = current.parent
+
+    # Farthest ancestor first, so nearer definitions overwrite.
+    for directory in reversed(directories):
+        for name in _AUTO_IMPORTED_FILES:
+            candidate = directory / name
+            if not candidate.is_file():
+                continue
+            found = _read_properties_from_file(candidate)
+            if found:
+                properties.update(found)
+                if "targetframework" in found or "targetframeworks" in found:
+                    source = f"imported:{_relative(root, candidate)}"
+
+    for imported in _explicit_imports(project_path):
+        found = _read_properties_from_file(imported)
+        if found:
+            properties.update(found)
+            if "targetframework" in found or "targetframeworks" in found:
+                source = f"imported:{_relative(root, imported)}"
+
+    return properties, source
+
+
+def _explicit_imports(project_path: Path) -> list[Path]:
+    """Relative .props/.targets files the project imports by path.
+
+    Only relative paths that resolve to a real file: an import whose path is an
+    unexpanded MSBuild property cannot be followed without evaluating MSBuild, which
+    is the thing this module exists to avoid.
+    """
+    try:
+        # Local build file, not untrusted input.
+        tree = ET.parse(project_path)
+    except (ET.ParseError, OSError):
+        return []
+
+    resolved: list[Path] = []
+    for element in tree.getroot().iter():
+        if _localname(element) != "import":
+            continue
+        raw = element.get("Project") or ""
+        if not raw or "$(" in raw:
+            continue
+        candidate = (project_path.parent / raw.replace("\\", "/")).resolve()
+        if candidate.is_file() and candidate.suffix.lower() in {".props", ".targets"}:
+            resolved.append(candidate)
+    return resolved
+
+
+def _read_properties_from_file(path: Path) -> dict[str, str]:
+    try:
+        # Local build file, not untrusted input.
+        tree = ET.parse(path)
+    except (ET.ParseError, OSError):
+        return {}
+    return _read_properties(tree.getroot())
 
 
 def _classify_style(root: ET.Element) -> ProjectStyle:

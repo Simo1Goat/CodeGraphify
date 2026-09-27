@@ -21,6 +21,11 @@ public sealed class LoadedVariant
     /// <summary>Errors that mean references were missing (usually: never restored).</summary>
     public int MissingReferenceErrorCount { get; set; }
 
+    /// <summary>Source generators this project loaded, and documents they produced.</summary>
+    public int GeneratorCount { get; set; }
+
+    public int GeneratedTreeCount { get; set; }
+
     public bool IsDegraded { get; set; }
 }
 
@@ -110,6 +115,10 @@ public sealed class WorkspaceLoader
             ["BuildingInsideVisualStudio"] = "true",
             ["ProvideCommandLineArgs"] = "true",
             ["SkipCompilerExecution"] = "true",
+            // We are reading code, not auditing dependencies. NuGet's audit emits
+            // NU1901-NU1904 through MSBuildWorkspace's failure channel, which is
+            // pure noise here.
+            ["NuGetAudit"] = "false",
         };
 
         using var workspace = MSBuildWorkspace.Create(properties);
@@ -119,21 +128,12 @@ public sealed class WorkspaceLoader
         // partial-semantic.
         workspace.WorkspaceFailed += (_, e) =>
         {
-            var severity = e.Diagnostic.Kind == WorkspaceDiagnosticKind.Failure
-                ? Contract.Severities.Error
-                : Contract.Severities.Warning;
-
-            result.Diagnostics.Add(new Contract.Diagnostic
-            {
-                Severity = severity,
-                Code = "WORKSPACE",
-                Message = e.Diagnostic.Message,
-            });
-
-            if (e.Diagnostic.Kind == WorkspaceDiagnosticKind.Failure)
-            {
-                result.WorkspaceFailureMessages.Add(e.Diagnostic.Message);
-            }
+            // Collected, not reported yet. Whether a message matters depends on
+            // whether the project it names ends up with a usable compilation, and
+            // that is not known until every project has been compiled. Reporting
+            // these as errors immediately put five benign NuGet advisories into a
+            // perfectly healthy scan's output.
+            result.WorkspaceFailureMessages.Add(e.Diagnostic.Message);
 
             if (_options.Verbose)
             {
@@ -162,7 +162,7 @@ public sealed class WorkspaceLoader
 
         GroupIntoVariants(projects, result);
         await CompileAsync(result, cancellationToken);
-        AttributeWorkspaceFailures(result);
+        ReportWorkspaceFailures(result);
         return result;
     }
 
@@ -432,6 +432,38 @@ public sealed class WorkspaceLoader
                         continue;
                     }
 
+                    // MSBuildWorkspace loads generators but never runs them, so
+                    // every type declared in a .razor or .cshtml file, and anything
+                    // behind [GeneratedRegex], would be missing. Run them here.
+                    var generated = SourceGeneratorRunner.Run(
+                        variant.Project, compilation, cancellationToken);
+                    compilation = generated.Compilation;
+                    variant.Compilation = compilation;
+                    variant.GeneratorCount = generated.GeneratorCount;
+                    variant.GeneratedTreeCount = generated.GeneratedTreeCount;
+
+                    if (_options.Verbose)
+                    {
+                        _log.WriteLine(
+                            $"[generators] {project.ProjectKey} ({variant.TargetFramework}): " +
+                            $"{generated.GeneratorCount} generator(s) produced " +
+                            $"{generated.GeneratedTreeCount} document(s) from " +
+                            $"{variant.Project.AdditionalDocuments.Count()} additional file(s)");
+                    }
+
+                    foreach (var diagnostic in generated.Diagnostics
+                                 .Where(d => d.Severity >= DiagnosticSeverity.Warning)
+                                 .Take(10))
+                    {
+                        result.Diagnostics.Add(new Contract.Diagnostic
+                        {
+                            Severity = Contract.Severities.Warning,
+                            Code = diagnostic.Id,
+                            Message = diagnostic.GetMessage(),
+                            ProjectKey = project.ProjectKey,
+                        });
+                    }
+
                     if (!HasUsableCoreLibrary(compilation))
                     {
                         // No corelib means no System.Object, so nothing resolves:
@@ -480,37 +512,72 @@ public sealed class WorkspaceLoader
     private static bool HasUsableCoreLibrary(Compilation compilation) =>
         compilation.GetSpecialType(SpecialType.System_Object).TypeKind != TypeKind.Error;
 
-    /// <summary>Marks every project MSBuild failed to evaluate as degraded.</summary>
-    private static void AttributeWorkspaceFailures(WorkspaceLoadResult result)
+    /// <summary>
+    /// Reports which projects MSBuild complained about, without judging them by it.
+    ///
+    /// MSBuildWorkspace surfaces a great deal through the same failure channel,
+    /// including things that have nothing to do with whether symbols resolve: a
+    /// NuGet vulnerability advisory (NU1902/NU1903) about a package version arrives
+    /// here as a "failure", and so does a project in a language we do not handle.
+    /// Degrading a project on that basis marked three healthy projects of a real
+    /// reference application as failed, which withheld the stale sweep -- so on any
+    /// repository containing a flagged package the graph would never reconcile.
+    ///
+    /// Whether a project is usable is decided instead by evidence about the
+    /// compilation itself: does it have a core library, and can it resolve its
+    /// references. Those are checked in <see cref="InspectDiagnostics"/> and
+    /// <see cref="HasUsableCoreLibrary"/>, and a genuine MSBuild failure fails them
+    /// anyway, because a project MSBuild could not evaluate has no references at all.
+    /// </summary>
+    private static void ReportWorkspaceFailures(WorkspaceLoadResult result)
     {
         if (result.WorkspaceFailureMessages.Count == 0)
         {
             return;
         }
 
+        var attributed = new HashSet<string>(StringComparer.Ordinal);
+
         foreach (var project in result.Projects)
         {
-            var failed = result.WorkspaceFailureMessages.Any(
-                message => message.Contains(project.ProjectPath, StringComparison.OrdinalIgnoreCase));
+            var mentions = result.WorkspaceFailureMessages
+                .Where(message =>
+                    message.Contains(project.ProjectPath, StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
-            if (!failed)
+            if (mentions.Count == 0)
             {
                 continue;
             }
 
-            foreach (var variant in project.Variants)
-            {
-                variant.IsDegraded = true;
-            }
+            var usable = project.Variants.Any(v => !v.IsDegraded);
+
+            attributed.UnionWith(mentions);
 
             result.Diagnostics.Add(new Contract.Diagnostic
             {
-                Severity = Contract.Severities.Error,
-                Code = "MSBUILD_FAILED",
+                Severity = usable ? Contract.Severities.Warning : Contract.Severities.Error,
+                Code = "MSBUILD_REPORTED",
                 Message =
-                    $"MSBuild could not fully evaluate {project.ProjectKey}, so its references and " +
-                    "compile items are incomplete. The project is excluded from the analyzed scope.",
+                    $"MSBuild reported {mentions.Count} message(s) for {project.ProjectKey}"
+                    + (usable
+                        ? ", but its compilation resolves normally, so it is analyzed. First: "
+                        : ", and its compilation is not usable. First: ")
+                    + mentions[0],
                 ProjectKey = project.ProjectKey,
+            });
+        }
+
+        // Messages naming no project we loaded -- a project in another language, a
+        // malformed solution entry. Reported so nothing is silently swallowed, as
+        // warnings because they do not affect any C# project's analysis.
+        foreach (var message in result.WorkspaceFailureMessages.Where(m => !attributed.Contains(m)))
+        {
+            result.Diagnostics.Add(new Contract.Diagnostic
+            {
+                Severity = Contract.Severities.Warning,
+                Code = "WORKSPACE",
+                Message = message,
             });
         }
     }
@@ -545,15 +612,20 @@ public sealed class WorkspaceLoader
                 Code = "MISSING_REFERENCES",
                 Message =
                     $"{variant.MissingReferenceErrorCount} missing-reference error(s) in " +
-                    $"{project.ProjectKey} ({variant.TargetFramework}). Run 'dotnet restore' first; " +
-                    "call resolution into the affected assemblies will be incomplete.",
+                    $"{project.ProjectKey} ({variant.TargetFramework}); call resolution into the " +
+                    "affected assemblies will be incomplete. Usual causes, in order: packages not " +
+                    "restored ('dotnet restore'); a required workload not installed " +
+                    "('dotnet workload restore' -- Blazor WebAssembly, MAUI and Android SDKs each " +
+                    "need one); or a targeting pack for this framework missing on this machine.",
                 ProjectKey = project.ProjectKey,
             });
         }
 
-        // Report a bounded sample of the rest so a broken build is diagnosable
-        // without writing every error of a large solution into the output.
-        foreach (var diagnostic in errors.Where(d => !missingReferenceCodes.Contains(d.Id)).Take(25))
+        // A bounded sample of the errors themselves, missing-reference ones included:
+        // a count alone says a project is degraded without saying what is absent, and
+        // "5 missing references" in a project that builds fine on the command line is
+        // not something anyone can act on.
+        foreach (var diagnostic in errors.Take(25))
         {
             var span = diagnostic.Location.GetLineSpan();
             result.Diagnostics.Add(new Contract.Diagnostic

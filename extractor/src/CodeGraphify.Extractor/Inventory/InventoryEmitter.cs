@@ -209,6 +209,16 @@ public sealed class InventoryEmitter
     /// </summary>
     private void EmitDocuments(LoadedProject project, LoadedVariant variant, string variantId)
     {
+        var documentPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var document in variant.Project.Documents)
+        {
+            if (document.FilePath is not null)
+            {
+                documentPaths.Add(document.FilePath);
+            }
+        }
+
         foreach (var document in variant.Project.Documents)
         {
             if (document.FilePath is null)
@@ -244,6 +254,64 @@ public sealed class InventoryEmitter
                 Source = variantId,
                 Target = fileId,
                 Kind = isGenerated ? RelationKinds.Generates : RelationKinds.Compiles,
+                Resolved = true,
+                Metadata = VariantMetadata(project.ProjectKey, variant.TargetFramework),
+            });
+        }
+
+        EmitGeneratedTrees(project, variant, variantId, documentPaths);
+    }
+
+    /// <summary>
+    /// Trees that exist only in the compilation: source generator output.
+    ///
+    /// These are not project documents, so the loop above never sees them -- yet
+    /// declarations in them are real and stage 2 emits DECLARES edges from their file.
+    /// Without a node here those edges dangle, which is how 63 of them appeared on a
+    /// real ASP.NET solution the moment generators started running.
+    /// </summary>
+    private void EmitGeneratedTrees(
+        LoadedProject project,
+        LoadedVariant variant,
+        string variantId,
+        HashSet<string> documentPaths)
+    {
+        if (variant.Compilation is null)
+        {
+            return;
+        }
+
+        foreach (var tree in variant.Compilation.SyntaxTrees)
+        {
+            if (string.IsNullOrEmpty(tree.FilePath) || documentPaths.Contains(tree.FilePath))
+            {
+                continue;
+            }
+
+            var relativePath = PathUtil.ToRepoRelative(_repoRoot, tree.FilePath);
+            var fileId = EntityId.File(relativePath);
+
+            _output.WriteEntity(new Entity
+            {
+                Id = fileId,
+                Kind = EntityKinds.GeneratedFile,
+                Name = Path.GetFileName(relativePath),
+                CanonicalName = relativePath,
+                FilePath = relativePath,
+                Metadata = new Dictionary<string, object?>
+                {
+                    ["category"] = "code",
+                    ["generated"] = true,
+                    ["source_generated"] = true,
+                    ["outside_repo"] = true,
+                },
+            });
+
+            _output.WriteRelation(new Relation
+            {
+                Source = variantId,
+                Target = fileId,
+                Kind = RelationKinds.Generates,
                 Resolved = true,
                 Metadata = VariantMetadata(project.ProjectKey, variant.TargetFramework),
             });

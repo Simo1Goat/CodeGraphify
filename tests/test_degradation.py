@@ -69,12 +69,49 @@ def test_the_reason_is_reported_and_actionable(legacy_scan: ExtractionResult) ->
     diagnostics = read_jsonl(legacy_scan.output_dir / "diagnostics.jsonl")
     codes = {d["code"] for d in diagnostics}
     assert "NO_CORELIB" in codes
-    assert "MSBUILD_FAILED" in codes
+    assert "MSBUILD_REPORTED" in codes
 
     corelib = next(d for d in diagnostics if d["code"] == "NO_CORELIB")
     assert corelib["project_key"] is not None
     # It must say what to do about it, not merely that something went wrong.
     assert "targeting pack" in corelib["message"] or "restore" in corelib["message"]
+
+
+def test_missing_reference_advice_names_more_than_restore(
+    legacy_scan: ExtractionResult,
+) -> None:
+    """A real reference application failed this way because a workload was not
+    installed, not because packages were unrestored. Advice that names only
+    'dotnet restore' sends people down the wrong path."""
+    diagnostics = read_jsonl(legacy_scan.output_dir / "diagnostics.jsonl")
+    missing = [d for d in diagnostics if d["code"] == "MISSING_REFERENCES"]
+    assert missing
+    message = missing[0]["message"]
+    assert "restore" in message
+    assert "workload" in message
+    assert "targeting pack" in message
+
+
+def test_a_project_msbuild_complained_about_is_judged_on_its_compilation(
+    legacy_scan: ExtractionResult,
+) -> None:
+    """MSBuildWorkspace reports much through its failure channel that has nothing to
+    do with whether symbols resolve -- a NuGet vulnerability advisory, a project in
+    another language. Degrading a project on that basis marked three healthy projects
+    of a real application as failed, which withheld the stale sweep: on any repository
+    containing a flagged package, the graph would never have reconciled.
+
+    So a project is judged by whether its compilation is usable, and an MSBuild
+    message about a project that works is a warning, not an error.
+    """
+    diagnostics = read_jsonl(legacy_scan.output_dir / "diagnostics.jsonl")
+    reported = [d for d in diagnostics if d["code"] == "MSBUILD_REPORTED"]
+    assert reported
+
+    # Here the projects genuinely are unusable, so these are errors -- the severity
+    # follows the evidence rather than the existence of a message.
+    assert all(d["severity"] == "error" for d in reported)
+    assert all(d["project_key"] for d in reported)
 
 
 def test_a_failed_project_still_gets_a_real_target_framework(

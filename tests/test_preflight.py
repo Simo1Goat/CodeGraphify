@@ -169,3 +169,127 @@ def test_summary_is_human_readable() -> None:
     summary = probe_repository(LEGACY_FIXTURE).summary()
     assert "needs-windows" in summary
     assert "net48" in summary
+
+
+# --- centrally managed properties ---------------------------------------------
+#
+# Found on a real repository: eShopOnWeb declares TargetFramework in
+# Directory.Packages.props and not in any .csproj, so reading only project files
+# found no framework at all. That is not cosmetic -- with no frameworks to inspect,
+# the Windows checks have nothing to match, and a Windows-only repo that centralises
+# its TFM would be reported linux-ok. That is the one wrong answer with a real
+# consequence: routing a codebase to a host that cannot analyze it.
+
+
+def _sdk_project(directory: Path, name: str, body: str = "") -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{name}.csproj"
+    path.write_text(f'<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>{body}</PropertyGroup></Project>')
+    return path
+
+
+def test_target_framework_is_read_from_directory_build_props(tmp_path: Path) -> None:
+    (tmp_path / "Directory.Build.props").write_text(
+        "<Project><PropertyGroup><TargetFramework>net8.0</TargetFramework>"
+        "</PropertyGroup></Project>"
+    )
+    project = _sdk_project(tmp_path / "src" / "A", "A")
+
+    probe = probe_project(project, tmp_path)
+    assert probe.target_frameworks == ("net8.0",)
+    assert probe.target_framework_source == "imported:Directory.Build.props"
+
+
+def test_target_framework_is_read_from_directory_packages_props(tmp_path: Path) -> None:
+    """Where eShopOnWeb actually puts it: NuGet's central package management file,
+    which MSBuild imports just as automatically."""
+    (tmp_path / "Directory.Packages.props").write_text(
+        "<Project><PropertyGroup><ManagePackageVersionsCentrally>true"
+        "</ManagePackageVersionsCentrally><TargetFramework>net8.0</TargetFramework>"
+        "</PropertyGroup></Project>"
+    )
+    project = _sdk_project(tmp_path / "src" / "A", "A")
+
+    probe = probe_project(project, tmp_path)
+    assert probe.target_frameworks == ("net8.0",)
+    assert probe.target_framework_source == "imported:Directory.Packages.props"
+
+
+def test_a_project_overrides_an_imported_framework(tmp_path: Path) -> None:
+    (tmp_path / "Directory.Build.props").write_text(
+        "<Project><PropertyGroup><TargetFramework>net8.0</TargetFramework>"
+        "</PropertyGroup></Project>"
+    )
+    project = _sdk_project(
+        tmp_path / "src" / "A", "A", "<TargetFramework>net6.0</TargetFramework>"
+    )
+
+    probe = probe_project(project, tmp_path)
+    assert probe.target_frameworks == ("net6.0",)
+    assert probe.target_framework_source == "project"
+
+
+def test_the_nearest_directory_props_wins(tmp_path: Path) -> None:
+    (tmp_path / "Directory.Build.props").write_text(
+        "<Project><PropertyGroup><TargetFramework>net6.0</TargetFramework>"
+        "</PropertyGroup></Project>"
+    )
+    nested = tmp_path / "src"
+    nested.mkdir()
+    (nested / "Directory.Build.props").write_text(
+        "<Project><PropertyGroup><TargetFramework>net8.0</TargetFramework>"
+        "</PropertyGroup></Project>"
+    )
+    project = _sdk_project(nested / "A", "A")
+
+    assert probe_project(project, tmp_path).target_frameworks == ("net8.0",)
+
+
+def test_a_centrally_managed_windows_only_repo_is_not_reported_as_linux_ok(
+    tmp_path: Path,
+) -> None:
+    """The bug that mattered. Without following imports this returned linux-ok,
+    which would route a Windows-only codebase to a Linux host."""
+    (tmp_path / "Directory.Build.props").write_text(
+        "<Project><PropertyGroup><TargetFramework>net48</TargetFramework>"
+        "<UseWindowsForms>true</UseWindowsForms></PropertyGroup></Project>"
+    )
+    _sdk_project(tmp_path / "src" / "App", "App")
+
+    probe = probe_repository(tmp_path)
+    assert probe.verdict is Verdict.NEEDS_WINDOWS
+    reasons = " ".join(probe.reasons)
+    assert "net48" in reasons
+    assert "WinForms" in reasons
+
+
+def test_an_explicitly_imported_props_file_is_followed(tmp_path: Path) -> None:
+    (tmp_path / "common.props").write_text(
+        "<Project><PropertyGroup><TargetFramework>net8.0</TargetFramework>"
+        "</PropertyGroup></Project>"
+    )
+    directory = tmp_path / "src" / "A"
+    directory.mkdir(parents=True)
+    (directory / "A.csproj").write_text(
+        '<Project Sdk="Microsoft.NET.Sdk">'
+        '<Import Project="../../common.props" />'
+        "</Project>"
+    )
+
+    assert probe_project(directory / "A.csproj", tmp_path).target_frameworks == ("net8.0",)
+
+
+def test_an_unevaluatable_import_path_is_skipped(tmp_path: Path) -> None:
+    """A legacy project imports $(MSBuildToolsPath)\\Microsoft.CSharp.targets.
+    Following that would need MSBuild, which is exactly what this module avoids."""
+    directory = tmp_path / "src" / "A"
+    directory.mkdir(parents=True)
+    (directory / "A.csproj").write_text(
+        '<Project Sdk="Microsoft.NET.Sdk">'
+        '<Import Project="$(MSBuildToolsPath)\\Microsoft.CSharp.targets" />'
+        "<PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>"
+        "</Project>"
+    )
+    probe = probe_project(directory / "A.csproj", tmp_path)
+    assert probe.target_frameworks == ("net8.0",)
+    assert probe.parse_error is None
