@@ -82,6 +82,8 @@ public static class Program
         var declarationCount = 0;
         var callCount = 0;
         var unresolvedCount = 0;
+        var hierarchyCount = 0;
+        var memberEdgeCount = 0;
         AnalysisMode mode;
 
         try
@@ -121,8 +123,9 @@ public static class Program
             // Stage 3: calls. Same scope rule as stage 2 -- a variant without a
             // usable compilation cannot resolve a call target, and an unresolved
             // call there would say more about the build than about the code.
-            var scope = Calls.AnalyzedScope.From(loaded);
-            var calls = new Calls.CallEmitter(options, repoRoot, output, scope);
+            var analyzedScope = Symbols.AnalyzedScope.From(loaded);
+            var nodes = new Symbols.SymbolNodeFactory(options, output, analyzedScope);
+            var calls = new Calls.CallEmitter(options, repoRoot, output, nodes);
             foreach (var project in loaded.Projects)
             {
                 foreach (var variant in project.Variants.Where(v => !v.IsDegraded))
@@ -137,6 +140,25 @@ public static class Program
             {
                 Console.Error.WriteLine(
                     $"[calls] {callCount} resolved, {unresolvedCount} unresolved");
+            }
+
+            // Stage 4: the type hierarchy. What turns CALLS_INTERFACE from "a call
+            // went through this interface" into "these concrete members could run".
+            var typeModel = new TypeModel.TypeModelEmitter(options, repoRoot, output, nodes);
+            foreach (var project in loaded.Projects)
+            {
+                foreach (var variant in project.Variants.Where(v => !v.IsDegraded))
+                {
+                    typeModel.Emit(project, variant);
+                }
+            }
+
+            hierarchyCount = typeModel.HierarchyEdgeCount;
+            memberEdgeCount = typeModel.MemberEdgeCount;
+            if (options.Verbose)
+            {
+                Console.Error.WriteLine(
+                    $"[type model] {hierarchyCount} hierarchy, {memberEdgeCount} member edges");
             }
 
             foreach (var diagnostic in loaded.Diagnostics)
@@ -202,6 +224,8 @@ public static class Program
                 ["declarations"] = declarationCount,
                 ["calls"] = callCount,
                 ["unresolved_calls"] = unresolvedCount,
+                ["hierarchy_edges"] = hierarchyCount,
+                ["member_edges"] = memberEdgeCount,
             },
             OutputFiles = output.DescribeFiles(),
             Errors = [.. errors],

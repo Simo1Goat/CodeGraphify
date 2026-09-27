@@ -33,15 +33,15 @@ public sealed class CallEmitter
     private readonly ExtractorOptions _options;
     private readonly string _repoRoot;
     private readonly GraphOutput _output;
-    private readonly AnalyzedScope _scope;
+    private readonly SymbolNodeFactory _nodes;
 
     public CallEmitter(
-        ExtractorOptions options, string repoRoot, GraphOutput output, AnalyzedScope scope)
+        ExtractorOptions options, string repoRoot, GraphOutput output, SymbolNodeFactory nodes)
     {
         _options = options;
         _repoRoot = repoRoot;
         _output = output;
-        _scope = scope;
+        _nodes = nodes;
     }
 
     public int CallCount { get; private set; }
@@ -68,11 +68,10 @@ public sealed class CallEmitter
         "System.Reflection.FieldInfo.SetValue",
     };
 
-    private sealed record CallContext(
-        Compilation Compilation,
-        string ProjectKey,
-        string TargetFramework,
-        bool TreeHasErrors);
+    private sealed record CallContext(SymbolScope Scope, bool TreeHasErrors)
+    {
+        public Compilation Compilation => Scope.Compilation;
+    }
 
     public void Emit(LoadedProject project, LoadedVariant variant)
     {
@@ -86,9 +85,7 @@ public sealed class CallEmitter
         {
             var model = compilation.GetSemanticModel(tree);
             var context = new CallContext(
-                compilation,
-                project.ProjectKey,
-                variant.TargetFramework,
+                new SymbolScope(compilation, project.ProjectKey, variant.TargetFramework),
                 TreeHasErrors: tree.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error));
 
             foreach (var node in tree.GetRoot().DescendantNodes())
@@ -297,10 +294,9 @@ public sealed class CallEmitter
             _ => RelationKinds.CallsDirect,
         };
 
-        if (isExternal)
-        {
-            EnsureExternalMember(definition, targetId, context);
-        }
+        // The Property or Event node itself, emitted here when it is external or
+        // synthesized, so the edge cannot dangle.
+        EnsureExternalMember(definition, context);
 
         var metadata = Provenance(context);
         metadata["resolution_status"] = isExternal
@@ -639,23 +635,8 @@ public sealed class CallEmitter
     /// project of this scan (a cross-project call, still ours, and it must land on
     /// that project's own node rather than a duplicate); or genuinely external.
     /// </summary>
-    private (string Id, bool IsExternal) ResolveId(ISymbol symbol, CallContext context)
-    {
-        var definition = symbol.OriginalDefinition;
-        var canonicalName = SymbolKey.CanonicalName(definition);
-
-        if (SymbolKey.IsFromThisCompilation(definition, context.Compilation))
-        {
-            return (EntityId.Symbol(canonicalName, context.ProjectKey, context.TargetFramework), false);
-        }
-
-        if (_scope.TryResolve(definition.ContainingAssembly?.Name, context.TargetFramework, out var variant))
-        {
-            return (EntityId.Symbol(canonicalName, variant.ProjectKey, variant.TargetFramework), false);
-        }
-
-        return (EntityId.ExternalSymbol(canonicalName, definition.ContainingAssembly?.Name), true);
-    }
+    private (string Id, bool IsExternal) ResolveId(ISymbol symbol, CallContext context) =>
+        _nodes.ResolveId(symbol, context.Scope);
 
     // --- external symbols ----------------------------------------------------
 
@@ -664,162 +645,19 @@ public sealed class CallEmitter
     /// ExternalType that declares it) when the target lives in a referenced
     /// assembly. Internal targets already have nodes from stage 2.
     /// </summary>
-    private string EnsureTarget(IMethodSymbol target, CallContext context)
-    {
-        var (id, isExternal) = ResolveId(target, context);
+    private string EnsureTarget(IMethodSymbol target, CallContext context) =>
+        _nodes.EnsureMember(target, context.Scope);
 
-        if (!isExternal)
-        {
-            // Anything stage 2 chose not to emit -- a delegate's Invoke, an
-            // implicit default constructor -- needs a node here, or the edge
-            // dangles and Neo4j MERGEs a blank node in its place. Asking stage 2's
-            // own predicate is what keeps the two stages from disagreeing.
-            if (!Symbols.DeclarationEmitter.ShouldEmitMember(target))
-            {
-                EmitSynthesizedMember(target, id, context);
-            }
+    private string EnsureType(ITypeSymbol type, CallContext context) =>
+        _nodes.EnsureType(type, context.Scope);
 
-            return id;
-        }
-
-        var assemblyName = target.ContainingAssembly?.Name;
-
-        _output.WriteEntity(new Entity
-        {
-            Id = id,
-            Kind = EntityKinds.ExternalMethod,
-            Name = target.Name,
-            CanonicalName = SymbolKey.CanonicalName(target),
-            Metadata = new Dictionary<string, object?>
-            {
-                ["language"] = "csharp",
-                ["external"] = true,
-                ["assembly_name"] = assemblyName,
-                ["declaring_type"] = target.ContainingType is null
-                    ? null
-                    : SymbolKey.DisplayType(target.ContainingType),
-                ["signature"] = SymbolKey.Signature(target),
-                ["parameter_count"] = target.Parameters.Length,
-                ["is_static"] = target.IsStatic,
-            },
-        });
-
-        if (target.ContainingType is { } containingType)
-        {
-            var typeId = EnsureType(containingType, context);
-            _output.WriteRelation(new Relation
-            {
-                Source = typeId,
-                Target = id,
-                Kind = RelationKinds.Declares,
-                Resolved = true,
-                Metadata = Provenance(context),
-            });
-        }
-
-        return id;
-    }
-
-    /// <summary>
-    /// A node for a member of ours that has no source of its own: a delegate's
-    /// Invoke, a synthesized record method. Emitted here rather than in stage 2
-    /// because only a call site proves one is worth having, and emitting every
-    /// synthesized member of every type would bloat the graph for no gain.
-    /// </summary>
-    private void EmitSynthesizedMember(IMethodSymbol target, string id, CallContext context)
-    {
-        var kind = target.MethodKind is MethodKind.Constructor or MethodKind.StaticConstructor
-            ? EntityKinds.Constructor
-            : EntityKinds.Method;
-
-        var metadata = Provenance(context);
-        metadata["language"] = "csharp";
-        metadata["external"] = false;
-        metadata["synthesized"] = true;
-        metadata["method_kind"] = target.MethodKind.ToString();
-        metadata["signature"] = SymbolKey.Signature(target);
-        metadata["parameter_count"] = target.Parameters.Length;
-        metadata["is_static"] = target.IsStatic;
-        if (target.ContainingType is { } containingType)
-        {
-            metadata["declaring_type"] = SymbolKey.DisplayType(containingType);
-        }
-
-        _output.WriteEntity(new Entity
-        {
-            Id = id,
-            Kind = kind,
-            Name = target.Name,
-            CanonicalName = SymbolKey.CanonicalName(target),
-            Metadata = metadata,
-        });
-
-        if (target.ContainingType is { } declaringType)
-        {
-            var (typeId, typeIsExternal) = ResolveId(declaringType, context);
-            if (!typeIsExternal)
-            {
-                _output.WriteRelation(new Relation
-                {
-                    Source = typeId,
-                    Target = id,
-                    Kind = RelationKinds.Declares,
-                    Resolved = true,
-                    Metadata = Provenance(context),
-                });
-            }
-        }
-    }
-
-    /// <summary>Node id for a type, emitting an ExternalType when it is not ours.</summary>
-    private string EnsureType(ITypeSymbol type, CallContext context)
-    {
-        var definition = type.OriginalDefinition;
-        var (id, isExternal) = ResolveId(definition, context);
-
-        if (!isExternal)
-        {
-            return id;
-        }
-
-        var assemblyName = definition.ContainingAssembly?.Name;
-
-        _output.WriteEntity(new Entity
-        {
-            Id = id,
-            Kind = EntityKinds.ExternalType,
-            Name = definition.Name,
-            CanonicalName = SymbolKey.CanonicalName(definition),
-            Metadata = new Dictionary<string, object?>
-            {
-                ["language"] = "csharp",
-                ["external"] = true,
-                ["assembly_name"] = assemblyName,
-                ["full_name"] = SymbolKey.DisplayType(definition),
-            },
-        });
-
-        // Tie the type to the assembly node stage 1 created, so a dependency can be
-        // traced from a call all the way out to the library it lands in.
-        if (assemblyName is not null)
-        {
-            _output.WriteRelation(new Relation
-            {
-                Source = EntityId.ExternalSymbol($"A:{assemblyName}", assemblyName),
-                Target = id,
-                Kind = RelationKinds.Contains,
-                Resolved = true,
-                Metadata = Provenance(context),
-            });
-        }
-
-        return id;
-    }
+    private string EnsureExternalMember(ISymbol member, CallContext context) =>
+        _nodes.EnsureMember(member, context.Scope);
 
     // --- helpers -------------------------------------------------------------
 
     private string CallerId(ISymbol caller, CallContext context) =>
-        SymbolKey.IdFor(caller, context.Compilation, context.ProjectKey, context.TargetFramework);
+        _nodes.ResolveId(caller, context.Scope).Id;
 
     private static bool IsReflectionEntryPoint(IMethodSymbol target)
     {
@@ -847,13 +685,6 @@ public sealed class CallEmitter
         return collapsed.Length <= 120 ? collapsed : collapsed[..120];
     }
 
-    private Dictionary<string, object?> Provenance(CallContext context) => new()
-    {
-        ["repo_id"] = _options.RepoId,
-        ["scan_id"] = _options.ScanId,
-        ["resolution_engine"] = "roslyn",
-        ["project_key"] = context.ProjectKey,
-        ["target_framework"] = context.TargetFramework,
-        ["configuration"] = _options.Configuration,
-    };
+    private Dictionary<string, object?> Provenance(CallContext context) =>
+        _nodes.Provenance(context.Scope);
 }

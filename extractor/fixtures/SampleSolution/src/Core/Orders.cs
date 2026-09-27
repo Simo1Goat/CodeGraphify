@@ -34,6 +34,10 @@ public abstract class OrderServiceBase
 
     // Abstract: implemented, never called directly.
     public abstract string Describe();
+
+    // Virtual property, overridden below: OVERRIDES applies to properties too, not
+    // only to methods.
+    public virtual string Kind => "base";
 }
 
 public class OrderService : OrderServiceBase, IOrderService
@@ -63,6 +67,8 @@ public class OrderService : OrderServiceBase, IOrderService
     public override int Validate(Order order) => order.Total.Amount > 0 ? 0 : 2;
 
     public override string Describe() => nameof(OrderService);
+
+    public override string Kind => "orders";
 }
 
 public class MockOrderService : IOrderService

@@ -13,7 +13,8 @@ for the design this implements.
 | Stage 1 — Walk (repository + compilation inventory) | done |
 | Stage 2 — Parse / declarations | done |
 | Stage 3 — Resolve / calls | done |
-| Stage 4 — Write (Neo4j) | not started |
+| Stage 4 — Type model | done |
+| Stage 5 — Write (Neo4j) | not started |
 
 ## Layout
 
@@ -190,6 +191,27 @@ not lost.
 containing it, since neither is a node in phase 1. A call from a property body
 belongs to the property, matching stage 2's choice not to emit accessors.
 
+**The type model records declared relationships, not their closure.** Only
+directly declared interfaces get `IMPLEMENTS`; the transitive set is what a graph
+query computes, and storing it would both multiply edges and make "which type
+actually declares this" unanswerable. An interface's base interfaces are `INHERITS`,
+because an interface extends rather than implements.
+
+**Universal relationships are left out.** No `INHERITS` to `object`, `ValueType`,
+`Enum`, `Delegate` or `Array`, and no `OVERRIDES` of `object.ToString`/`Equals`/
+`GetHashCode` — every type has these, they carry no dependency information, and
+including one while skipping the other would be incoherent. Deriving from a
+framework type that is *not* universal (say `InvalidOperationException`) is a real
+dependency and is recorded.
+
+**`IMPLEMENTS_MEMBER` uses `FindImplementationForInterfaceMember`,** not name
+matching: an explicit implementation is named
+`Acme.Core.Orders.IOrderService.Submit`, so a name match would miss it while also
+cross-wiring overloads. It walks `AllInterfaces` so interfaces inherited through a
+base interface are covered, but emits only when the implementation is declared by
+*that* type — otherwise the same edge is re-emitted once per derived type, growing
+quadratically down a deep hierarchy.
+
 **Two additions to the contract's vocabulary**, both to avoid asserting something
 false:
 
@@ -243,6 +265,26 @@ The mode drives what the caller may do — `app/extractor_runner.py`, one table:
 | 0 | `partial-semantic` | ingest, no sweep |
 | 0 | `syntax-only` | ingest with reduced trust, no sweep |
 | ≠0 | `failed` / unparseable | fall back to tree-sitter |
+
+## What the graph can answer now
+
+Stages 1–4 together make dispatch answerable. A `CALLS_INTERFACE` edge gives the
+compile-time target; following `IMPLEMENTS_MEMBER` backwards from it gives the
+concrete members that could run:
+
+```
+RunAll --CALLS_INTERFACE--> IOrderService.Submit(Order)
+                              <--IMPLEMENTS_MEMBER-- OrderService.Submit
+                              <--IMPLEMENTS_MEMBER-- MockOrderService.Submit
+                              <--IMPLEMENTS_MEMBER-- ExplicitOrderService....Submit
+```
+
+The two `Submit` overloads reach *different* implementation sets, which is the
+clearest single illustration of why this needs semantic analysis: a name-based graph
+gives both overloads all six implementations.
+
+Phase 2's `MAY_DISPATCH_TO` is a materialization of that traversal rather than a new
+analysis, which is why it was cheap to defer.
 
 ## Neo4j
 

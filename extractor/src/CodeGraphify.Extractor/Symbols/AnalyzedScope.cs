@@ -1,6 +1,6 @@
 using CodeGraphify.Extractor.Inventory;
 
-namespace CodeGraphify.Extractor.Calls;
+namespace CodeGraphify.Extractor.Symbols;
 
 /// <summary>
 /// Which assemblies belong to projects in this scan.
