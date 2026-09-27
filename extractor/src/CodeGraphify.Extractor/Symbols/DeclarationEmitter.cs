@@ -219,7 +219,9 @@ public sealed class DeclarationEmitter
     }
 
     /// <summary>
-    /// Which members become nodes.
+    /// Which members become nodes. Public because stage 3 must emit a node for any
+    /// target this returns false for, or its call edges dangle -- two separate
+    /// predicates would drift apart, as they already did once.
     ///
     /// Property and event accessors are skipped: they are methods, but the Property
     /// or Event node already represents them, and emitting both doubles the member
@@ -231,7 +233,7 @@ public sealed class DeclarationEmitter
     /// implicitly declared but are unmistakably part of the type's surface, so a
     /// graph without them would be wrong.
     /// </summary>
-    private static bool ShouldEmitMember(ISymbol member)
+    public static bool ShouldEmitMember(ISymbol member)
     {
         if (member is IMethodSymbol method)
         {

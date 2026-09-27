@@ -297,9 +297,9 @@ public sealed class InventoryEmitter
             });
         }
 
-        // Assembly references become ExternalType-less nodes for now: phase 1
-        // records that the dependency exists, and step 3 attaches the external
-        // types and methods actually used.
+        // One node per referenced assembly, recording that the dependency exists.
+        // Stage 3 hangs the external types and methods actually used off these, so
+        // "we reference this library" and "we call into it" stay distinguishable.
         foreach (var reference in variant.Project.MetadataReferences.OfType<PortableExecutableReference>())
         {
             if (reference.FilePath is null)
@@ -313,14 +313,13 @@ public sealed class InventoryEmitter
             _output.WriteEntity(new Entity
             {
                 Id = assemblyId,
-                Kind = EntityKinds.ExternalType,
+                Kind = EntityKinds.ExternalAssembly,
                 Name = assemblyName,
                 CanonicalName = $"A:{assemblyName}",
                 Metadata = new Dictionary<string, object?>
                 {
                     ["assembly_name"] = assemblyName,
                     ["external"] = true,
-                    ["is_assembly"] = true,
                 },
             });
 

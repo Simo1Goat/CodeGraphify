@@ -22,6 +22,7 @@
         "Event",
         "LocalFunction",
         "Route",
+        "ExternalAssembly",
         "ExternalType",
         "ExternalMethod",
         "UnresolvedReference"

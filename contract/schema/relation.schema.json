@@ -16,6 +16,7 @@
         "CALLS_DIRECT",
         "CALLS_VIRTUAL",
         "CALLS_INTERFACE",
+        "CALLS_UNRESOLVED",
         "MAY_DISPATCH_TO",
         "CREATES",
         "READS",

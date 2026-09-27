@@ -54,8 +54,19 @@ public class OrderRunner
         LocalHelper();
         void LocalHelper() => _service.Cancel(order.Id);
 
+        // Method group used as a delegate value: RESOLVES_TO, not a call. The
+        // method may never run, so recording it as a call would invent control
+        // flow that does not exist.
+        OrderSubmitted handler = OnOrderSubmitted;
+        handler(order);
+
         DynamicCall(order);
         ReflectionCall();
+    }
+
+    private void OnOrderSubmitted(Order order)
+    {
+        _service.Cancel(order.Id);
     }
 
     // dynamic: Roslyn cannot name the target. Must become a Dynamic relation

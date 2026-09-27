@@ -86,8 +86,22 @@ public static class SymbolKey
 
     public static string DisplayType(ITypeSymbol type) => type.ToDisplayString(TypeOnlyFormat);
 
+    /// <summary>Signature of the declaration, with generics left as type
+    /// parameters (<c>Repository&lt;T&gt;.Add(T item)</c>).</summary>
     public static string Signature(ISymbol symbol) =>
         symbol.OriginalDefinition.ToDisplayString(SignatureFormat);
+
+    /// <summary>
+    /// Signature as constructed at the call site
+    /// (<c>Repository&lt;OrderEntity&gt;.Add(OrderEntity item)</c>).
+    ///
+    /// Deliberately does not normalize to OriginalDefinition: this exists to record
+    /// the concrete instantiation that <see cref="Signature"/> throws away, so
+    /// "who calls Repository&lt;Order&gt;.Add" stays answerable even though the edge
+    /// points at Repository&lt;T&gt;.Add.
+    /// </summary>
+    public static string ConstructedSignature(ISymbol symbol) =>
+        symbol.ToDisplayString(SignatureFormat);
 
     /// <summary>Entity kind for a type declaration.</summary>
     public static string EntityKindFor(INamedTypeSymbol type) => type switch

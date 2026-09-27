@@ -52,7 +52,11 @@ class EntityKind(StrEnum):
     LOCAL_FUNCTION = "LocalFunction"
     # Phase 2
     ROUTE = "Route"
-    # Outside the analyzed projects
+    # Outside the analyzed projects.
+    # ExternalAssembly is a referenced assembly as a whole; ExternalType is a type
+    # inside one. Kept apart so "which libraries do we depend on" and "which of
+    # their types do we actually touch" are different questions.
+    EXTERNAL_ASSEMBLY = "ExternalAssembly"
     EXTERNAL_TYPE = "ExternalType"
     EXTERNAL_METHOD = "ExternalMethod"
     UNRESOLVED_REFERENCE = "UnresolvedReference"
@@ -76,6 +80,12 @@ class RelationKind(StrEnum):
     CALLS_DIRECT = "CALLS_DIRECT"
     CALLS_VIRTUAL = "CALLS_VIRTUAL"
     CALLS_INTERFACE = "CALLS_INTERFACE"
+    # A call site whose target cannot be named: dynamic, reflective, ambiguous or
+    # broken. Points at an UnresolvedReference carrying the evidence. Context
+    # section 3.3 requires preserving these rather than fabricating an edge or
+    # dropping the call, and none of the CALLS_* kinds above can be used without
+    # asserting a dispatch that was never proved.
+    CALLS_UNRESOLVED = "CALLS_UNRESOLVED"
     MAY_DISPATCH_TO = "MAY_DISPATCH_TO"
     # Data / other
     CREATES = "CREATES"
@@ -100,6 +110,23 @@ class ResolutionStatus(StrEnum):
     BUILD_UNAVAILABLE = "BuildUnavailable"
     PARSE_ERROR = "ParseError"
     UNRESOLVED = "Unresolved"
+
+
+class DispatchKind(StrEnum):
+    """How the call reaches its target, recorded separately from how confidently
+    the target was identified.
+
+    Both are needed: a virtual call into a referenced assembly is
+    ``resolution_status=External`` and ``dispatch_kind=Virtual``, and collapsing
+    them into one field loses whichever half is written second.
+    """
+
+    DIRECT = "Direct"
+    VIRTUAL = "Virtual"
+    INTERFACE = "Interface"
+    DYNAMIC = "Dynamic"
+    REFLECTION = "Reflection"
+    NONE = "None"
 
 
 class DiagnosticSeverity(StrEnum):

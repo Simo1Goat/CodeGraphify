@@ -23,6 +23,11 @@ public static class EntityKinds
     public const string Event = "Event";
     public const string LocalFunction = "LocalFunction";
     public const string Route = "Route";
+
+    /// <summary>A referenced assembly as a whole. Kept distinct from
+    /// <see cref="ExternalType"/> so "which libraries do we depend on" and "which
+    /// of their types do we actually touch" stay separate questions.</summary>
+    public const string ExternalAssembly = "ExternalAssembly";
     public const string ExternalType = "ExternalType";
     public const string ExternalMethod = "ExternalMethod";
     public const string UnresolvedReference = "UnresolvedReference";
@@ -45,6 +50,12 @@ public static class RelationKinds
     public const string CallsDirect = "CALLS_DIRECT";
     public const string CallsVirtual = "CALLS_VIRTUAL";
     public const string CallsInterface = "CALLS_INTERFACE";
+
+    /// <summary>A call site whose target cannot be named -- dynamic, reflective,
+    /// ambiguous or broken -- pointing at an UnresolvedReference that carries the
+    /// evidence. None of the CALLS_* kinds above can be used for these without
+    /// asserting a dispatch that was never proved.</summary>
+    public const string CallsUnresolved = "CALLS_UNRESOLVED";
     public const string MayDispatchTo = "MAY_DISPATCH_TO";
     public const string Creates = "CREATES";
     public const string Reads = "READS";
@@ -66,6 +77,21 @@ public static class ResolutionStatuses
     public const string BuildUnavailable = "BuildUnavailable";
     public const string ParseError = "ParseError";
     public const string Unresolved = "Unresolved";
+}
+
+/// <summary>
+/// How a call reaches its target, recorded separately from how confidently the
+/// target was identified: a virtual call into a referenced assembly is
+/// External + Virtual, and one field cannot hold both.
+/// </summary>
+public static class DispatchKinds
+{
+    public const string Direct = "Direct";
+    public const string Virtual = "Virtual";
+    public const string Interface = "Interface";
+    public const string Dynamic = "Dynamic";
+    public const string Reflection = "Reflection";
+    public const string None = "None";
 }
 
 public static class Severities

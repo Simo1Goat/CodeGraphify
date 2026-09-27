@@ -12,7 +12,7 @@ for the design this implements.
 | Preflight probe (what kind of codebase is this?) | done |
 | Stage 1 — Walk (repository + compilation inventory) | done |
 | Stage 2 — Parse / declarations | done |
-| Stage 3 — Resolve / calls | not started |
+| Stage 3 — Resolve / calls | done |
 | Stage 4 — Write (Neo4j) | not started |
 
 ## Layout
@@ -157,6 +157,49 @@ calls across two nodes), property backing fields, and parameters. Methods carry
 **What is a node despite being synthesized** — a record's positional properties.
 They are implicitly declared, so a blanket skip of synthesized members would drop
 the entire public surface of every positional record.
+
+**Calls are driven by the operation API** (`IInvocationOperation`), not by
+`GetSymbolInfo` on invocation syntax. The operation tree separates cases that look
+identical in source — a dynamic invocation, a delegate invoke, a reduced extension
+call, an invalid call with candidates — so classification rests on what Roslyn
+proved rather than on what the code looks like.
+
+**Two fields describe every call edge, answering different questions:**
+
+- `dispatch_kind` — how the call reaches its target: `Direct`, `Virtual`,
+  `Interface`, `Dynamic`, `Reflection`, `None`.
+- `resolution_status` — how confidently the target was identified: `Resolved`,
+  `External`, `VirtualDispatch`, `InterfaceDispatch`, `Dynamic`, `ReflectionBased`,
+  `Ambiguous`, `Unresolved`, `ParseError`.
+
+A virtual call into a referenced assembly is `External` + `Virtual`; one field
+cannot hold both.
+
+**External means "not in any analyzed project"**, not "not in this compilation".
+A call from one project into another crosses a compilation boundary while staying
+inside the codebase, and it must land on that project's own node rather than a
+duplicate — otherwise the graph fragments exactly where cross-project dependency
+analysis matters.
+
+**Normalization** — `ReducedFrom` for extension methods and `OriginalDefinition`
+for generics, so `Repository<Order>.Add` collapses to `Repository<T>.Add`. The
+constructed form is kept in `constructed_target` so the concrete instantiation is
+not lost.
+
+**Attribution** — a call inside a lambda or local function belongs to the member
+containing it, since neither is a node in phase 1. A call from a property body
+belongs to the property, matching stage 2's choice not to emit accessors.
+
+**Two additions to the contract's vocabulary**, both to avoid asserting something
+false:
+
+- `CALLS_UNRESOLVED` — a call whose target cannot be named (dynamic, reflective,
+  ambiguous, broken), pointing at an `UnresolvedReference` that carries the
+  evidence. None of the `CALLS_*` kinds could be used without claiming a dispatch
+  that was never proved. Context §3.3 asks for such a relation.
+- `ExternalAssembly` — a referenced assembly as a whole, separate from
+  `ExternalType` for a type inside one, so "which libraries do we depend on" and
+  "which of their types do we touch" stay distinct.
 
 ## Deployment notes
 

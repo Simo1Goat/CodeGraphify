@@ -80,6 +80,8 @@ public static class Program
         var analyzed = new List<string>();
         var failed = new List<string>();
         var declarationCount = 0;
+        var callCount = 0;
+        var unresolvedCount = 0;
         AnalysisMode mode;
 
         try
@@ -114,6 +116,27 @@ public static class Program
             if (options.Verbose)
             {
                 Console.Error.WriteLine($"[declarations] {declarationCount} types and members");
+            }
+
+            // Stage 3: calls. Same scope rule as stage 2 -- a variant without a
+            // usable compilation cannot resolve a call target, and an unresolved
+            // call there would say more about the build than about the code.
+            var scope = Calls.AnalyzedScope.From(loaded);
+            var calls = new Calls.CallEmitter(options, repoRoot, output, scope);
+            foreach (var project in loaded.Projects)
+            {
+                foreach (var variant in project.Variants.Where(v => !v.IsDegraded))
+                {
+                    calls.Emit(project, variant);
+                }
+            }
+
+            callCount = calls.CallCount;
+            unresolvedCount = calls.UnresolvedCount;
+            if (options.Verbose)
+            {
+                Console.Error.WriteLine(
+                    $"[calls] {callCount} resolved, {unresolvedCount} unresolved");
             }
 
             foreach (var diagnostic in loaded.Diagnostics)
@@ -177,6 +200,8 @@ public static class Program
                 ["projects_analyzed"] = analyzed.Count,
                 ["projects_failed"] = failed.Count,
                 ["declarations"] = declarationCount,
+                ["calls"] = callCount,
+                ["unresolved_calls"] = unresolvedCount,
             },
             OutputFiles = output.DescribeFiles(),
             Errors = [.. errors],

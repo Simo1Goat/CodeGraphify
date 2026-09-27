@@ -127,11 +127,15 @@ def test_assembly_references_are_shared_nodes_not_per_project_copies(
     reference set is the targeting pack, so the names are the reference
     assemblies (System.Runtime) rather than the implementation ones
     (System.Private.CoreLib).
+
+    ExternalAssembly, not ExternalType: an assembly and a type inside it are
+    different things, and stage 3 emits real ExternalType nodes that would
+    otherwise collide with these.
     """
     runtime = [
         e
         for e in entities.values()
-        if e["kind"] == "ExternalType" and e["name"] == "System.Runtime"
+        if e["kind"] == "ExternalAssembly" and e["name"] == "System.Runtime"
     ]
     assert len(runtime) == 1, "framework assembly duplicated per project"
 
