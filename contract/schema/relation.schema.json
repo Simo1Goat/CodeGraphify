@@ -1,0 +1,113 @@
+{
+  "$defs": {
+    "RelationKind": {
+      "enum": [
+        "CONTAINS",
+        "DECLARES",
+        "COMPILES",
+        "COMPILES_AS",
+        "GENERATES",
+        "REFERENCES_PROJECT",
+        "REFERENCES_ASSEMBLY",
+        "INHERITS",
+        "IMPLEMENTS",
+        "OVERRIDES",
+        "IMPLEMENTS_MEMBER",
+        "CALLS_DIRECT",
+        "CALLS_VIRTUAL",
+        "CALLS_INTERFACE",
+        "MAY_DISPATCH_TO",
+        "CREATES",
+        "READS",
+        "WRITES",
+        "ROUTE_HANDLED_BY",
+        "RESOLVES_TO",
+        "DEPENDS_ON"
+      ],
+      "title": "RelationKind",
+      "type": "string"
+    },
+    "SourceSpan": {
+      "additionalProperties": false,
+      "description": "Where in the source a fact was observed. Lines and columns are 1-based.",
+      "properties": {
+        "file_path": {
+          "title": "File Path",
+          "type": "string"
+        },
+        "start_line": {
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "start_column": {
+          "title": "Start Column",
+          "type": "integer"
+        },
+        "end_line": {
+          "title": "End Line",
+          "type": "integer"
+        },
+        "end_column": {
+          "title": "End Column",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "file_path",
+        "start_line",
+        "start_column",
+        "end_line",
+        "end_column"
+      ],
+      "title": "SourceSpan",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "description": "Source entity id.",
+      "title": "Source",
+      "type": "string"
+    },
+    "target": {
+      "description": "Target entity id.",
+      "title": "Target",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/RelationKind"
+    },
+    "resolved": {
+      "title": "Resolved",
+      "type": "boolean"
+    },
+    "evidence": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SourceSpan"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Required for every semantic relation. Structural relations (CONTAINS, COMPILES) have no single call site and may omit it."
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "source",
+    "target",
+    "kind",
+    "resolved"
+  ],
+  "title": "Relation",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codegraphify/contract/relation.schema.json"
+}

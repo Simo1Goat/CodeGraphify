@@ -1,0 +1,131 @@
+{
+  "$defs": {
+    "AnalysisMode": {
+      "description": "How much the analyzer was actually able to prove (context section 3.2).",
+      "enum": [
+        "semantic",
+        "partial-semantic",
+        "syntax-only",
+        "failed"
+      ],
+      "title": "AnalysisMode",
+      "type": "string"
+    },
+    "OutputFile": {
+      "additionalProperties": false,
+      "description": "One JSONL shard written next to the manifest.",
+      "properties": {
+        "path": {
+          "description": "Path relative to the output directory.",
+          "title": "Path",
+          "type": "string"
+        },
+        "kind": {
+          "description": "entities | relations | diagnostics | compilations",
+          "title": "Kind",
+          "type": "string"
+        },
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "kind",
+        "count"
+      ],
+      "title": "OutputFile",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The small JSON summary the extractor prints to stdout and writes to\n``manifest.json``. Bulk data lives in the JSONL files it points at.",
+  "properties": {
+    "schema_version": {
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "repo_id": {
+      "title": "Repo Id",
+      "type": "string"
+    },
+    "scan_id": {
+      "title": "Scan Id",
+      "type": "string"
+    },
+    "analysis_mode": {
+      "$ref": "#/$defs/AnalysisMode"
+    },
+    "resolution_engine": {
+      "description": "roslyn | tree-sitter",
+      "title": "Resolution Engine",
+      "type": "string"
+    },
+    "started_at": {
+      "title": "Started At",
+      "type": "string"
+    },
+    "finished_at": {
+      "title": "Finished At",
+      "type": "string"
+    },
+    "repo_root": {
+      "title": "Repo Root",
+      "type": "string"
+    },
+    "analyzed_project_keys": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Analyzed Project Keys",
+      "type": "array"
+    },
+    "failed_project_keys": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Failed Project Keys",
+      "type": "array"
+    },
+    "counts": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Counts",
+      "type": "object"
+    },
+    "output_files": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/OutputFile"
+      },
+      "title": "Output Files",
+      "type": "array"
+    },
+    "errors": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Errors",
+      "type": "array"
+    }
+  },
+  "required": [
+    "repo_id",
+    "scan_id",
+    "analysis_mode",
+    "resolution_engine",
+    "started_at",
+    "finished_at",
+    "repo_root"
+  ],
+  "title": "Manifest",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codegraphify/contract/manifest.schema.json"
+}

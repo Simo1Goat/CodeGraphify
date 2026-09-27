@@ -1,0 +1,96 @@
+{
+  "additionalProperties": false,
+  "description": "Context section 8. Part of both identity and evidence.\n\nThe same source file can yield different active syntax under a different\ntarget framework or configuration, so entities and relations must be able to\nsay which variant they came from.",
+  "properties": {
+    "variant_id": {
+      "description": "Stable id of this CompilationVariant.",
+      "title": "Variant Id",
+      "type": "string"
+    },
+    "project_key": {
+      "description": "Repo-relative .csproj path.",
+      "title": "Project Key",
+      "type": "string"
+    },
+    "project_path": {
+      "title": "Project Path",
+      "type": "string"
+    },
+    "assembly_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Assembly Name"
+    },
+    "target_framework": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Framework"
+    },
+    "configuration": {
+      "default": "Debug",
+      "title": "Configuration",
+      "type": "string"
+    },
+    "language_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Language Version"
+    },
+    "nullable_context": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Nullable Context"
+    },
+    "preprocessor_symbols": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Preprocessor Symbols",
+      "type": "array"
+    },
+    "is_primary_variant": {
+      "default": true,
+      "description": "True for the one variant per project that was analyzed by default. Multi-targeting projects have further variants only when the caller asked for them.",
+      "title": "Is Primary Variant",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "variant_id",
+    "project_key",
+    "project_path"
+  ],
+  "title": "CompilationContext",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codegraphify/contract/compilation-context.schema.json"
+}

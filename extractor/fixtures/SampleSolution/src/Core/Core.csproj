@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Multi-targeting on purpose: the extractor must produce one
+         CompilationVariant per TFM and pick one primary. -->
+    <TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
+    <AssemblyName>Acme.Core</AssemblyName>
+    <RootNamespace>Acme.Core</RootNamespace>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
+    <!-- Only the legacy variant compiles this file (the SDK globs it in by
+         default, so the modern variant removes it). Proves Compile items are
+         evaluated per variant, not per project. -->
+    <Compile Remove="Legacy/LegacyShim.cs" />
+  </ItemGroup>
+</Project>

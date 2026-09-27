@@ -1,0 +1,104 @@
+{
+  "$defs": {
+    "EntityKind": {
+      "enum": [
+        "Repository",
+        "Solution",
+        "Project",
+        "CompilationVariant",
+        "File",
+        "GeneratedFile",
+        "Namespace",
+        "Class",
+        "Record",
+        "Struct",
+        "Interface",
+        "Enum",
+        "Delegate",
+        "Method",
+        "Constructor",
+        "Property",
+        "Field",
+        "Event",
+        "LocalFunction",
+        "Route",
+        "ExternalType",
+        "ExternalMethod",
+        "UnresolvedReference"
+      ],
+      "title": "EntityKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "description": "Stable node id; see app/contract/identity.py.",
+      "title": "Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/EntityKind"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "canonical_name": {
+      "description": "Roslyn documentation comment id for symbols (M:Acme.Orders.OrderService.Submit(Acme.Orders.Order)), or a repo-relative path for files and projects.",
+      "title": "Canonical Name",
+      "type": "string"
+    },
+    "file_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "File Path"
+    },
+    "start_line": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Start Line"
+    },
+    "end_line": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "End Line"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "id",
+    "kind",
+    "name",
+    "canonical_name"
+  ],
+  "title": "Entity",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codegraphify/contract/entity.schema.json"
+}
