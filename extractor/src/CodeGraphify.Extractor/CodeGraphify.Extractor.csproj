@@ -11,7 +11,21 @@
     <!-- MSBuildLocator requires that we do NOT reference MSBuild assemblies
          directly; it loads them from the SDK it discovers at run time. -->
     <EnableDynamicLoading>true</EnableDynamicLoading>
+    <!-- Roslyn's MSBuildWorkspace runs MSBuild in a separate BuildHost process
+         and locates it relative to this assembly's own directory, which
+         single-file publishing leaves empty. Publish self-contained to a folder
+         instead; see the guard target below and scripts/publish-extractor.sh. -->
+    <PublishSingleFile>false</PublishSingleFile>
   </PropertyGroup>
+
+  <Target Name="RejectSingleFilePublish" BeforeTargets="Publish"
+          Condition="'$(PublishSingleFile)' == 'true'">
+    <Error Text="PublishSingleFile is not supported: MSBuildWorkspace resolves its
+BuildHost process relative to the assembly directory, which is empty in a
+single-file bundle, so every project load fails with ArgumentNullException at
+run time. Publish self-contained to a folder instead (see
+scripts/publish-extractor.sh)." />
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Build.Locator" Version="1.7.8" />
