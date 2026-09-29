@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Self
 
 from neo4j import Driver, GraphDatabase
+from neo4j.exceptions import ConfigurationError
 
 from app.extractor_runner import ExtractionResult
 from app.neo4j_writer import rows
@@ -118,7 +119,20 @@ class Neo4jWriter:
     @classmethod
     def connect(cls, settings: Neo4jSettings | None = None, **kwargs: Any) -> Neo4jWriter:
         settings = settings or Neo4jSettings.from_env()
-        driver = GraphDatabase.driver(settings.uri, auth=(settings.user, settings.password))
+        auth = (settings.user, settings.password)
+
+        # apply_schema runs 49 idempotent CREATE ... IF NOT EXISTS statements, and the
+        # server answers each already-present one with an informational notification.
+        # Left on, that is 49 paragraphs of log per scan burying everything useful.
+        try:
+            driver = GraphDatabase.driver(
+                settings.uri, auth=auth, notifications_min_severity="WARNING"
+            )
+        except (TypeError, ValueError, ConfigurationError):
+            # Older drivers do not support notification filtering; the noise is
+            # cosmetic, so fall back rather than fail to connect.
+            driver = GraphDatabase.driver(settings.uri, auth=auth)
+
         return cls(driver, database=settings.database, **kwargs)
 
     def close(self) -> None:

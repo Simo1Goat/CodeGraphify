@@ -49,6 +49,27 @@ Python dependencies (this repo uses `uv`; the venv has no `pip`):
 uv pip install -e '.[dev]'
 ```
 
+## Quick start
+
+One command, from anywhere on the machine:
+
+```bash
+~/PycharmProjects/CodeGraphify/scripts/scan.sh                    # scans eShopOnWeb
+~/PycharmProjects/CodeGraphify/scripts/scan.sh /path/to/Your.sln  # scans anything else
+```
+
+It resolves the repository from its own location, so the directory you run it from
+does not matter. It puts the SDK on PATH, checks the Python environment, starts
+Neo4j and waits for it, builds the extractor, restores the target, then probes,
+extracts and ingests. Extra arguments go to `python -m app.scan`
+(`--all-target-frameworks`, `--no-ingest`, `--configuration Release`).
+
+Skip steps while iterating: `SKIP_NEO4J=1 SKIP_RESTORE=1 SKIP_BUILD=1 scripts/scan.sh`.
+
+The graph payload is kept under `out/<repo-id>/<scan-id>/` (gitignored).
+
+For the individual steps, or to run them by hand, see the sections below.
+
 ## Check a codebase before scanning it
 
 Answers "can this host analyze this repo at all" in milliseconds, with no SDK, no
