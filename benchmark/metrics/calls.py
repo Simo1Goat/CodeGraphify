@@ -32,8 +32,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from benchmark.metrics.sets import Score, score
-
+from benchmark.metrics.sets import Score
 
 #: Target names that denote a constructor rather than a method.
 CONSTRUCTOR_NAMES = {".ctor", "#ctor", "ctor", ".cctor", "#cctor"}
