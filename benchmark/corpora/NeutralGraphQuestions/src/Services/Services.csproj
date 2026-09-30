@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Neutral.Services</RootNamespace>
+    <AssemblyName>Neutral.Services</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Q7: project reference -->
+    <ProjectReference Include="../Domain/Domain.csproj" />
+  </ItemGroup>
+</Project>

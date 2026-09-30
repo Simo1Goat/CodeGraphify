@@ -1,0 +1,335 @@
+# Ground truth for the NeutralGraphQuestions corpus.
+#
+# AUTHORED BY HAND from the C# source. It was NOT generated from the output of
+# either engine, and must never be. Its whole value is that it is independent of
+# both; a golden derived from an engine measures that engine against itself.
+#
+# Every fact carries an `evidence.quote` re-verified against the file at the
+# recorded line by oracles/golden.py, so fixture drift breaks the run instead of
+# silently re-baselining the numbers.
+#
+# Ids: types are `<Namespace>.<Type>`; members are `<Namespace>.<Type>.<Member>`
+# with a `#<arity>` suffix where the name is overloaded.
+
+version: 1
+corpus: neutral
+root: benchmark/corpora/NeutralGraphQuestions
+
+# --- declarations -------------------------------------------------------------
+declarations:
+
+  # ---- src/Domain/Orders.cs ----
+  - {id: Neutral.Domain.Orders, kind: Namespace, name: Neutral.Domain.Orders, path: src/Domain/Orders.cs, start_line: 1, q: [Q11], evidence: {line: 1, quote: "namespace Neutral.Domain.Orders;"}}
+  - {id: Neutral.Domain.Orders.OrderState, kind: Enum, name: OrderState, owner: Neutral.Domain.Orders, path: src/Domain/Orders.cs, start_line: 4, q: [Q11], evidence: {line: 4, quote: "public enum OrderState"}}
+  - {id: Neutral.Domain.Orders.OrderState.Draft, kind: Field, name: Draft, owner: Neutral.Domain.Orders.OrderState, path: src/Domain/Orders.cs, start_line: 6, q: [Q11], evidence: {line: 6, quote: "Draft,"}}
+  - {id: Neutral.Domain.Orders.OrderState.Placed, kind: Field, name: Placed, owner: Neutral.Domain.Orders.OrderState, path: src/Domain/Orders.cs, start_line: 7, q: [Q11], evidence: {line: 7, quote: "Placed,"}}
+  - {id: Neutral.Domain.Orders.OrderState.Cancelled, kind: Field, name: Cancelled, owner: Neutral.Domain.Orders.OrderState, path: src/Domain/Orders.cs, start_line: 8, q: [Q11], evidence: {line: 8, quote: "Cancelled,"}}
+  - {id: Neutral.Domain.Orders.Money, kind: Struct, name: Money, owner: Neutral.Domain.Orders, path: src/Domain/Orders.cs, start_line: 11, q: [Q11], evidence: {line: 11, quote: "public readonly struct Money"}}
+  - {id: Neutral.Domain.Orders.Money..ctor, kind: Constructor, name: Money, owner: Neutral.Domain.Orders.Money, arity: 2, path: src/Domain/Orders.cs, start_line: 13, q: [Q11], evidence: {line: 13, quote: "public Money(decimal amount, string currency)"}}
+  - {id: Neutral.Domain.Orders.Money.Amount, kind: Property, name: Amount, owner: Neutral.Domain.Orders.Money, path: src/Domain/Orders.cs, start_line: 19, q: [Q11], evidence: {line: 19, quote: "public decimal Amount { get; }"}}
+  - {id: Neutral.Domain.Orders.Money.Currency, kind: Property, name: Currency, owner: Neutral.Domain.Orders.Money, path: src/Domain/Orders.cs, start_line: 21, q: [Q11], evidence: {line: 21, quote: "public string Currency { get; }"}}
+  - {id: Neutral.Domain.Orders.Order, kind: Record, name: Order, owner: Neutral.Domain.Orders, path: src/Domain/Orders.cs, start_line: 24, q: [Q11], evidence: {line: 24, quote: "public record Order(int Id, Money Total)"}}
+  - {id: Neutral.Domain.Orders.Order..ctor, kind: Constructor, name: Order, owner: Neutral.Domain.Orders.Order, arity: 2, path: src/Domain/Orders.cs, start_line: 24, q: [Q11], evidence: {line: 24, quote: "public record Order(int Id, Money Total)"}}
+  - {id: Neutral.Domain.Orders.Order.Id, kind: Property, name: Id, owner: Neutral.Domain.Orders.Order, path: src/Domain/Orders.cs, start_line: 24, q: [Q11], evidence: {line: 24, quote: "public record Order(int Id, Money Total)"}}
+  - {id: Neutral.Domain.Orders.Order.Total, kind: Property, name: Total, owner: Neutral.Domain.Orders.Order, path: src/Domain/Orders.cs, start_line: 24, q: [Q11], evidence: {line: 24, quote: "public record Order(int Id, Money Total)"}}
+  - {id: Neutral.Domain.Orders.Order.State, kind: Property, name: State, owner: Neutral.Domain.Orders.Order, path: src/Domain/Orders.cs, start_line: 26, q: [Q11], evidence: {line: 26, quote: "public OrderState State { get; set; } = OrderState.Draft;"}}
+  - {id: Neutral.Domain.Orders.OrderPlaced, kind: Delegate, name: OrderPlaced, owner: Neutral.Domain.Orders, path: src/Domain/Orders.cs, start_line: 30, q: [Q11], evidence: {line: 30, quote: "public delegate void OrderPlaced(Order order);"}}
+  - {id: Neutral.Domain.Orders.IOrderSink, kind: Interface, name: IOrderSink, owner: Neutral.Domain.Orders, path: src/Domain/Orders.cs, start_line: 33, q: [Q3], evidence: {line: 33, quote: "public interface IOrderSink"}}
+  - {id: Neutral.Domain.Orders.IOrderSink.Accept#1, kind: Method, name: Accept, owner: Neutral.Domain.Orders.IOrderSink, arity: 1, path: src/Domain/Orders.cs, start_line: 36, q: [Q5], evidence: {line: 36, quote: "int Accept(Order order);"}}
+  - {id: Neutral.Domain.Orders.IOrderSink.Accept#2, kind: Method, name: Accept, owner: Neutral.Domain.Orders.IOrderSink, arity: 2, path: src/Domain/Orders.cs, start_line: 38, q: [Q5], evidence: {line: 38, quote: "int Accept(Order order, bool force);"}}
+  - {id: Neutral.Domain.Orders.IOrderSink.Discard, kind: Method, name: Discard, owner: Neutral.Domain.Orders.IOrderSink, arity: 1, path: src/Domain/Orders.cs, start_line: 40, q: [Q3], evidence: {line: 40, quote: "void Discard(int orderId);"}}
+  - {id: Neutral.Domain.Orders.PriceFormatter, kind: Class, name: PriceFormatter, owner: Neutral.Domain.Orders, path: src/Domain/Orders.cs, start_line: 44, q: [Q5], evidence: {line: 44, quote: "public static class PriceFormatter"}}
+  - {id: Neutral.Domain.Orders.PriceFormatter.Format#int, kind: Method, name: Format, owner: Neutral.Domain.Orders.PriceFormatter, arity: 1, path: src/Domain/Orders.cs, start_line: 46, q: [Q5], evidence: {line: 46, quote: "public static string Format(int amount) => $\"{amount} units\";"}}
+  - {id: Neutral.Domain.Orders.PriceFormatter.Format#Money, kind: Method, name: Format, owner: Neutral.Domain.Orders.PriceFormatter, arity: 1, path: src/Domain/Orders.cs, start_line: 48, q: [Q5], evidence: {line: 48, quote: "public static string Format(Money money) => $\"{money.Amount} {money.Currency}\";"}}
+  - {id: Neutral.Domain.Orders.PriceCalculator, kind: Class, name: PriceCalculator, owner: Neutral.Domain.Orders, path: src/Domain/Orders.cs, start_line: 52, q: [Q1], evidence: {line: 52, quote: "public static class PriceCalculator"}}
+  - {id: Neutral.Domain.Orders.PriceCalculator.Apply, kind: Method, name: Apply, owner: Neutral.Domain.Orders.PriceCalculator, arity: 2, path: src/Domain/Orders.cs, start_line: 54, q: [Q1], evidence: {line: 54, quote: "public static Money Apply(Money total, decimal rate) =>"}}
+
+  # ---- src/Domain/Reporting.cs ----
+  - {id: Neutral.Domain.Reporting, kind: Namespace, name: Neutral.Domain.Reporting, path: src/Domain/Reporting.cs, start_line: 1, q: [Q4], evidence: {line: 1, quote: "namespace Neutral.Domain.Reporting;"}}
+  - {id: Neutral.Domain.Reporting.ReportBase, kind: Class, name: ReportBase, owner: Neutral.Domain.Reporting, path: src/Domain/Reporting.cs, start_line: 5, q: [Q4], evidence: {line: 5, quote: "public abstract class ReportBase"}}
+  - {id: Neutral.Domain.Reporting.ReportBase.RenderCount, kind: Field, name: RenderCount, owner: Neutral.Domain.Reporting.ReportBase, path: src/Domain/Reporting.cs, start_line: 8, q: [Q11], evidence: {line: 8, quote: "protected int RenderCount;"}}
+  - {id: Neutral.Domain.Reporting.ReportBase.Rendered, kind: Event, name: Rendered, owner: Neutral.Domain.Reporting.ReportBase, path: src/Domain/Reporting.cs, start_line: 10, q: [Q11], evidence: {line: 10, quote: "public event Action<string>? Rendered;"}}
+  - {id: Neutral.Domain.Reporting.ReportBase.Render, kind: Method, name: Render, owner: Neutral.Domain.Reporting.ReportBase, arity: 0, path: src/Domain/Reporting.cs, start_line: 12, q: [Q4], evidence: {line: 12, quote: "public abstract string Render();"}}
+  - {id: Neutral.Domain.Reporting.ReportBase.Describe, kind: Method, name: Describe, owner: Neutral.Domain.Reporting.ReportBase, arity: 0, path: src/Domain/Reporting.cs, start_line: 14, q: [Q4], evidence: {line: 14, quote: "public virtual string Describe() => \"report\";"}}
+  - {id: Neutral.Domain.Reporting.ReportBase.RaiseRendered, kind: Method, name: RaiseRendered, owner: Neutral.Domain.Reporting.ReportBase, arity: 1, path: src/Domain/Reporting.cs, start_line: 16, q: [Q4], evidence: {line: 16, quote: "protected void RaiseRendered(string payload)"}}
+
+  # ---- src/Domain/Notifications.cs ----
+  - {id: Neutral.Domain.Notifications, kind: Namespace, name: Neutral.Domain.Notifications, path: src/Domain/Notifications.cs, start_line: 1, q: [Q3], evidence: {line: 1, quote: "namespace Neutral.Domain.Notifications;"}}
+  - {id: Neutral.Domain.Notifications.INotifier, kind: Interface, name: INotifier, owner: Neutral.Domain.Notifications, path: src/Domain/Notifications.cs, start_line: 3, q: [Q3], evidence: {line: 3, quote: "public interface INotifier"}}
+  - {id: Neutral.Domain.Notifications.INotifier.Notify, kind: Method, name: Notify, owner: Neutral.Domain.Notifications.INotifier, arity: 1, path: src/Domain/Notifications.cs, start_line: 5, q: [Q3], evidence: {line: 5, quote: "void Notify(string message);"}}
+  - {id: Neutral.Domain.Notifications.NotificationLog, kind: Class, name: NotificationLog, owner: Neutral.Domain.Notifications, path: src/Domain/Notifications.cs, start_line: 10, q: [Q11], evidence: {line: 10, quote: "public sealed class NotificationLog"}}
+  - {id: Neutral.Domain.Notifications.NotificationLog._entries, kind: Field, name: _entries, owner: Neutral.Domain.Notifications.NotificationLog, path: src/Domain/Notifications.cs, start_line: 12, q: [Q11], evidence: {line: 12, quote: "private readonly List<string> _entries = new();"}}
+  - {id: Neutral.Domain.Notifications.NotificationLog..ctor, kind: Constructor, name: NotificationLog, owner: Neutral.Domain.Notifications.NotificationLog, arity: 1, path: src/Domain/Notifications.cs, start_line: 14, q: [Q11], evidence: {line: 14, quote: "public NotificationLog(string channel)"}}
+  - {id: Neutral.Domain.Notifications.NotificationLog.Channel, kind: Property, name: Channel, owner: Neutral.Domain.Notifications.NotificationLog, path: src/Domain/Notifications.cs, start_line: 19, q: [Q11], evidence: {line: 19, quote: "public string Channel { get; }"}}
+  - {id: Neutral.Domain.Notifications.NotificationLog.Count, kind: Property, name: Count, owner: Neutral.Domain.Notifications.NotificationLog, path: src/Domain/Notifications.cs, start_line: 21, q: [Q11], evidence: {line: 21, quote: "public int Count => _entries.Count;"}}
+  - {id: Neutral.Domain.Notifications.NotificationLog.Add, kind: Method, name: Add, owner: Neutral.Domain.Notifications.NotificationLog, arity: 1, path: src/Domain/Notifications.cs, start_line: 23, q: [Q1], evidence: {line: 23, quote: "public void Add(string entry)"}}
+
+  # ---- src/Services/OrderService.cs ----
+  - {id: Neutral.Services, kind: Namespace, name: Neutral.Services, path: src/Services/OrderService.cs, start_line: 3, q: [Q3], evidence: {line: 3, quote: "namespace Neutral.Services;"}}
+  - {id: Neutral.Services.OrderService, kind: Class, name: OrderService, owner: Neutral.Services, path: src/Services/OrderService.cs, start_line: 6, q: [Q3], evidence: {line: 6, quote: "public class OrderService : IOrderSink"}}
+  - {id: Neutral.Services.OrderService._accepted, kind: Field, name: _accepted, owner: Neutral.Services.OrderService, path: src/Services/OrderService.cs, start_line: 8, q: [Q11], evidence: {line: 8, quote: "private readonly List<Order> _accepted = new();"}}
+  - {id: Neutral.Services.OrderService.Accept#1, kind: Method, name: Accept, owner: Neutral.Services.OrderService, arity: 1, path: src/Services/OrderService.cs, start_line: 11, q: [Q5], evidence: {line: 11, quote: "public int Accept(Order order)"}}
+  - {id: Neutral.Services.OrderService.Accept#2, kind: Method, name: Accept, owner: Neutral.Services.OrderService, arity: 2, path: src/Services/OrderService.cs, start_line: 19, q: [Q5], evidence: {line: 19, quote: "public int Accept(Order order, bool force) => force ? Accept(order) : -1;"}}
+  - {id: Neutral.Services.OrderService.Discard, kind: Method, name: Discard, owner: Neutral.Services.OrderService, arity: 1, path: src/Services/OrderService.cs, start_line: 21, q: [Q3], evidence: {line: 21, quote: "public void Discard(int orderId) => _accepted.RemoveAll(o => o.Id == orderId);"}}
+  - {id: Neutral.Services.OrderService.AcceptedCount, kind: Method, name: AcceptedCount, owner: Neutral.Services.OrderService, arity: 0, path: src/Services/OrderService.cs, start_line: 23, q: [Q12], evidence: {line: 23, quote: "public int AcceptedCount() => _accepted.Count;"}}
+  - {id: Neutral.Services.AuditingOrderService, kind: Class, name: AuditingOrderService, owner: Neutral.Services, path: src/Services/OrderService.cs, start_line: 27, q: [Q3], evidence: {line: 27, quote: "public class AuditingOrderService : IOrderSink"}}
+  - {id: Neutral.Services.AuditingOrderService.Accept#1, kind: Method, name: Accept, owner: Neutral.Services.AuditingOrderService, arity: 1, path: src/Services/OrderService.cs, start_line: 29, q: [Q3], evidence: {line: 29, quote: "public int Accept(Order order) => order.Id;"}}
+  - {id: Neutral.Services.AuditingOrderService.Accept#2, kind: Method, name: Accept, owner: Neutral.Services.AuditingOrderService, arity: 2, path: src/Services/OrderService.cs, start_line: 31, q: [Q3], evidence: {line: 31, quote: "public int Accept(Order order, bool force) => order.Id;"}}
+  - {id: Neutral.Services.AuditingOrderService.Discard, kind: Method, name: Discard, owner: Neutral.Services.AuditingOrderService, arity: 1, path: src/Services/OrderService.cs, start_line: 33, q: [Q3], evidence: {line: 33, quote: "public void Discard(int orderId)"}}
+  - {id: Neutral.Services.ExplicitOrderService, kind: Class, name: ExplicitOrderService, owner: Neutral.Services, path: src/Services/OrderService.cs, start_line: 40, q: [Q3], evidence: {line: 40, quote: "public class ExplicitOrderService : IOrderSink"}}
+  - {id: Neutral.Services.ExplicitOrderService.Accept#1, kind: Method, name: "IOrderSink.Accept", owner: Neutral.Services.ExplicitOrderService, arity: 1, explicit_impl: true, path: src/Services/OrderService.cs, start_line: 42, q: [Q3], evidence: {line: 42, quote: "int IOrderSink.Accept(Order order) => 0;"}}
+  - {id: Neutral.Services.ExplicitOrderService.Accept#2, kind: Method, name: "IOrderSink.Accept", owner: Neutral.Services.ExplicitOrderService, arity: 2, explicit_impl: true, path: src/Services/OrderService.cs, start_line: 44, q: [Q3], evidence: {line: 44, quote: "int IOrderSink.Accept(Order order, bool force) => 0;"}}
+  - {id: Neutral.Services.ExplicitOrderService.Discard, kind: Method, name: "IOrderSink.Discard", owner: Neutral.Services.ExplicitOrderService, arity: 1, explicit_impl: true, path: src/Services/OrderService.cs, start_line: 46, q: [Q3], evidence: {line: 46, quote: "void IOrderSink.Discard(int orderId)"}}
+
+  # ---- src/Services/Reports.cs ----
+  - {id: Neutral.Services.SummaryReport, kind: Class, name: SummaryReport, owner: Neutral.Services, path: src/Services/Reports.cs, start_line: 6, q: [Q4], evidence: {line: 6, quote: "public class SummaryReport : ReportBase"}}
+  - {id: Neutral.Services.SummaryReport.Render, kind: Method, name: Render, owner: Neutral.Services.SummaryReport, arity: 0, path: src/Services/Reports.cs, start_line: 8, q: [Q4], evidence: {line: 8, quote: "public override string Render()"}}
+  - {id: Neutral.Services.SummaryReport.Describe, kind: Method, name: Describe, owner: Neutral.Services.SummaryReport, arity: 0, path: src/Services/Reports.cs, start_line: 14, q: [Q4], evidence: {line: 14, quote: "public override string Describe() => \"summary report\";"}}
+  - {id: Neutral.Services.DetailedReport, kind: Class, name: DetailedReport, owner: Neutral.Services, path: src/Services/Reports.cs, start_line: 18, q: [Q4], evidence: {line: 18, quote: "public sealed class DetailedReport : SummaryReport"}}
+  - {id: Neutral.Services.DetailedReport.Render, kind: Method, name: Render, owner: Neutral.Services.DetailedReport, arity: 0, path: src/Services/Reports.cs, start_line: 20, q: [Q4], evidence: {line: 20, quote: "public override string Render()"}}
+
+  # ---- src/Services/Repository.cs ----
+  - {id: Neutral.Services.Data, kind: Namespace, name: Neutral.Services.Data, path: src/Services/Repository.cs, start_line: 1, q: [Q2], evidence: {line: 1, quote: "namespace Neutral.Services.Data;"}}
+  - {id: Neutral.Services.Data.IEntity, kind: Interface, name: IEntity, owner: Neutral.Services.Data, path: src/Services/Repository.cs, start_line: 3, q: [Q3], evidence: {line: 3, quote: "public interface IEntity"}}
+  - {id: Neutral.Services.Data.IEntity.Id, kind: Property, name: Id, owner: Neutral.Services.Data.IEntity, path: src/Services/Repository.cs, start_line: 5, q: [Q3], evidence: {line: 5, quote: "int Id { get; }"}}
+  - {id: Neutral.Services.Data.Repository, kind: Class, name: Repository, owner: Neutral.Services.Data, generic_arity: 1, path: src/Services/Repository.cs, start_line: 9, q: [Q2], evidence: {line: 9, quote: "public class Repository<T> where T : IEntity"}}
+  - {id: Neutral.Services.Data.Repository._items, kind: Field, name: _items, owner: Neutral.Services.Data.Repository, path: src/Services/Repository.cs, start_line: 11, q: [Q11], evidence: {line: 11, quote: "private readonly List<T> _items = new();"}}
+  - {id: Neutral.Services.Data.Repository.Add, kind: Method, name: Add, owner: Neutral.Services.Data.Repository, arity: 1, path: src/Services/Repository.cs, start_line: 13, q: [Q2], evidence: {line: 13, quote: "public void Add(T item) => _items.Add(item);"}}
+  - {id: Neutral.Services.Data.Repository.Count, kind: Method, name: Count, owner: Neutral.Services.Data.Repository, arity: 0, path: src/Services/Repository.cs, start_line: 15, q: [Q2], evidence: {line: 15, quote: "public int Count() => _items.Count;"}}
+  - {id: Neutral.Services.Data.RepositoryExtensions, kind: Class, name: RepositoryExtensions, owner: Neutral.Services.Data, path: src/Services/Repository.cs, start_line: 18, q: [Q2], evidence: {line: 18, quote: "public static class RepositoryExtensions"}}
+  - {id: Neutral.Services.Data.RepositoryExtensions.AddAll, kind: Method, name: AddAll, owner: Neutral.Services.Data.RepositoryExtensions, arity: 2, extension: true, path: src/Services/Repository.cs, start_line: 22, q: [Q2], evidence: {line: 22, quote: "public static void AddAll<T>(this Repository<T> repository, IEnumerable<T> items)"}}
+
+  # ---- src/Services/Notifiers.cs ----
+  - {id: Neutral.Services.EmailNotifier, kind: Class, name: EmailNotifier, owner: Neutral.Services, path: src/Services/Notifiers.cs, start_line: 5, q: [Q3], evidence: {line: 5, quote: "public sealed class EmailNotifier : INotifier"}}
+  - {id: Neutral.Services.EmailNotifier._log, kind: Field, name: _log, owner: Neutral.Services.EmailNotifier, path: src/Services/Notifiers.cs, start_line: 7, q: [Q6], evidence: {line: 7, quote: "private readonly NotificationLog _log = new(\"email\");"}}
+  - {id: Neutral.Services.EmailNotifier.Notify, kind: Method, name: Notify, owner: Neutral.Services.EmailNotifier, arity: 1, path: src/Services/Notifiers.cs, start_line: 9, q: [Q3], evidence: {line: 9, quote: "public void Notify(string message)"}}
+  - {id: Neutral.Services.EmailNotifier.Delivered, kind: Property, name: Delivered, owner: Neutral.Services.EmailNotifier, path: src/Services/Notifiers.cs, start_line: 15, q: [Q11], evidence: {line: 15, quote: "public int Delivered => _log.Count;"}}
+  - {id: Neutral.Services.SmsNotifier, kind: Class, name: SmsNotifier, owner: Neutral.Services, path: src/Services/Notifiers.cs, start_line: 18, q: [Q3], evidence: {line: 18, quote: "public sealed class SmsNotifier : INotifier"}}
+  - {id: Neutral.Services.SmsNotifier.Notify, kind: Method, name: Notify, owner: Neutral.Services.SmsNotifier, arity: 1, path: src/Services/Notifiers.cs, start_line: 20, q: [Q3], evidence: {line: 20, quote: "public void Notify(string message)"}}
+
+  # ---- src/Services/Validation.*.cs (ONE partial type, two declaration sites) ----
+  - {id: Neutral.Services.OrderValidator, kind: Class, name: OrderValidator, owner: Neutral.Services, partial: true, path: src/Services/Validation.Identity.cs, start_line: 6, also_declared_in: [{path: src/Services/Validation.Rules.cs, start_line: 7}], q: [Q10], evidence: {line: 6, quote: "public partial class OrderValidator"}}
+  - {id: Neutral.Services.OrderValidator.HasPositiveTotal, kind: Method, name: HasPositiveTotal, owner: Neutral.Services.OrderValidator, arity: 1, path: src/Services/Validation.Rules.cs, start_line: 9, q: [Q10], evidence: {line: 9, quote: "public bool HasPositiveTotal(Order order) => order.Total.Amount > 0;"}}
+  - {id: Neutral.Services.OrderValidator.HasIdentity, kind: Method, name: HasIdentity, owner: Neutral.Services.OrderValidator, arity: 1, path: src/Services/Validation.Identity.cs, start_line: 8, q: [Q10], evidence: {line: 8, quote: "public bool HasIdentity(Order order) => order.Id > 0;"}}
+  - {id: Neutral.Services.OrderValidator.IsValid, kind: Method, name: IsValid, owner: Neutral.Services.OrderValidator, arity: 1, path: src/Services/Validation.Identity.cs, start_line: 10, q: [Q10], evidence: {line: 10, quote: "public bool IsValid(Order order)"}}
+
+  # ---- src/Services/Formatting*.cs (same simple name, two namespaces) ----
+  - {id: Neutral.Services.Text, kind: Namespace, name: Neutral.Services.Text, path: src/Services/Formatting.cs, start_line: 1, q: [Q8], evidence: {line: 1, quote: "namespace Neutral.Services.Text;"}}
+  - {id: Neutral.Services.Text.Formatter, kind: Class, name: Formatter, owner: Neutral.Services.Text, path: src/Services/Formatting.cs, start_line: 5, q: [Q8], evidence: {line: 5, quote: "public static class Formatter"}}
+  - {id: Neutral.Services.Text.Formatter.Render, kind: Method, name: Render, owner: Neutral.Services.Text.Formatter, arity: 1, path: src/Services/Formatting.cs, start_line: 7, q: [Q8], evidence: {line: 7, quote: "public static string Render(string value) => value.Trim();"}}
+  - {id: Neutral.Services.Legacy, kind: Namespace, name: Neutral.Services.Legacy, path: src/Services/Formatting.Legacy.cs, start_line: 1, q: [Q8], evidence: {line: 1, quote: "namespace Neutral.Services.Legacy;"}}
+  - {id: Neutral.Services.Legacy.Formatter, kind: Class, name: Formatter, owner: Neutral.Services.Legacy, path: src/Services/Formatting.Legacy.cs, start_line: 5, q: [Q8], evidence: {line: 5, quote: "public static class Formatter"}}
+  - {id: Neutral.Services.Legacy.Formatter.Render, kind: Method, name: Render, owner: Neutral.Services.Legacy.Formatter, arity: 1, path: src/Services/Formatting.Legacy.cs, start_line: 7, q: [Q8], evidence: {line: 7, quote: "public static string Render(string value) => value.ToUpperInvariant();"}}
+
+  # ---- src/Host/Program.cs ----
+  - {id: Neutral.Host, kind: Namespace, name: Neutral.Host, path: src/Host/Program.cs, start_line: 9, q: [Q9], evidence: {line: 9, quote: "namespace Neutral.Host;"}}
+  - {id: Neutral.Host.Program, kind: Class, name: Program, owner: Neutral.Host, path: src/Host/Program.cs, start_line: 11, q: [Q9], evidence: {line: 11, quote: "public static class Program"}}
+  - {id: Neutral.Host.Program.Main, kind: Method, name: Main, owner: Neutral.Host.Program, arity: 0, path: src/Host/Program.cs, start_line: 13, q: [Q9], evidence: {line: 13, quote: "public static void Main()"}}
+  - {id: Neutral.Host.OrderRunner, kind: Class, name: OrderRunner, owner: Neutral.Host, path: src/Host/Program.cs, start_line: 25, q: [Q1], evidence: {line: 25, quote: "public sealed class OrderRunner"}}
+  - {id: Neutral.Host.OrderRunner._sink, kind: Field, name: _sink, owner: Neutral.Host.OrderRunner, path: src/Host/Program.cs, start_line: 27, q: [Q11], evidence: {line: 27, quote: "private readonly IOrderSink _sink;"}}
+  - {id: Neutral.Host.OrderRunner._notifier, kind: Field, name: _notifier, owner: Neutral.Host.OrderRunner, path: src/Host/Program.cs, start_line: 28, q: [Q11], evidence: {line: 28, quote: "private readonly INotifier _notifier;"}}
+  - {id: Neutral.Host.OrderRunner._repository, kind: Field, name: _repository, owner: Neutral.Host.OrderRunner, path: src/Host/Program.cs, start_line: 31, q: [Q6], evidence: {line: 31, quote: "private readonly Repository<OrderEntity> _repository = new();"}}
+  - {id: Neutral.Host.OrderRunner..ctor, kind: Constructor, name: OrderRunner, owner: Neutral.Host.OrderRunner, arity: 2, path: src/Host/Program.cs, start_line: 34, q: [Q9], evidence: {line: 34, quote: "public OrderRunner(IOrderSink sink, INotifier notifier)"}}
+  - {id: Neutral.Host.OrderRunner.Run, kind: Method, name: Run, owner: Neutral.Host.OrderRunner, arity: 0, path: src/Host/Program.cs, start_line: 40, q: [Q2], evidence: {line: 40, quote: "public void Run()"}}
+  - {id: Neutral.Host.OrderRunner.Announce, kind: Method, name: Announce, owner: Neutral.Host.OrderRunner, arity: 1, path: src/Host/Program.cs, start_line: 83, q: [Q2], evidence: {line: 83, quote: "private void Announce(string message)"}}
+  - {id: Neutral.Host.OrderRunner.DynamicCall, kind: Method, name: DynamicCall, owner: Neutral.Host.OrderRunner, arity: 1, path: src/Host/Program.cs, start_line: 89, q: [Q12], evidence: {line: 89, quote: "private void DynamicCall(Order order)"}}
+  - {id: Neutral.Host.OrderRunner.ReflectionCall, kind: Method, name: ReflectionCall, owner: Neutral.Host.OrderRunner, arity: 0, path: src/Host/Program.cs, start_line: 96, q: [Q12], evidence: {line: 96, quote: "private void ReflectionCall()"}}
+  - {id: Neutral.Host.ReportFactory, kind: Class, name: ReportFactory, owner: Neutral.Host, path: src/Host/Program.cs, start_line: 104, q: [Q6], evidence: {line: 104, quote: "public static class ReportFactory"}}
+  - {id: Neutral.Host.ReportFactory.Create, kind: Method, name: Create, owner: Neutral.Host.ReportFactory, arity: 0, path: src/Host/Program.cs, start_line: 106, q: [Q6], evidence: {line: 106, quote: "public static SummaryReport Create() => new DetailedReport();"}}
+  - {id: Neutral.Host.OrderEntity, kind: Record, name: OrderEntity, owner: Neutral.Host, path: src/Host/Program.cs, start_line: 109, q: [Q6], evidence: {line: 109, quote: "public record OrderEntity(int Id) : IEntity;"}}
+  - {id: Neutral.Host.OrderEntity..ctor, kind: Constructor, name: OrderEntity, owner: Neutral.Host.OrderEntity, arity: 1, path: src/Host/Program.cs, start_line: 109, q: [Q6], evidence: {line: 109, quote: "public record OrderEntity(int Id) : IEntity;"}}
+  - {id: Neutral.Host.OrderEntity.Id, kind: Property, name: Id, owner: Neutral.Host.OrderEntity, path: src/Host/Program.cs, start_line: 109, q: [Q6], evidence: {line: 109, quote: "public record OrderEntity(int Id) : IEntity;"}}
+
+  # ---- src/Host/ServiceRegistration.cs ----
+  - {id: Neutral.Host.ServiceRegistration, kind: Class, name: ServiceRegistration, owner: Neutral.Host, path: src/Host/ServiceRegistration.cs, start_line: 10, q: [Q9], evidence: {line: 10, quote: "public static class ServiceRegistration"}}
+  - {id: Neutral.Host.ServiceRegistration.AddNeutralServices, kind: Method, name: AddNeutralServices, owner: Neutral.Host.ServiceRegistration, arity: 1, extension: true, path: src/Host/ServiceRegistration.cs, start_line: 12, q: [Q9], evidence: {line: 12, quote: "public static IServiceCollection AddNeutralServices(this IServiceCollection services)"}}
+
+# --- hierarchy (in-repo supertypes only) --------------------------------------
+hierarchy:
+  - {sub: Neutral.Services.OrderService,          super: Neutral.Domain.Orders.IOrderSink,        rel: IMPLEMENTS, q: [Q3]}
+  - {sub: Neutral.Services.AuditingOrderService,  super: Neutral.Domain.Orders.IOrderSink,        rel: IMPLEMENTS, q: [Q3]}
+  - {sub: Neutral.Services.ExplicitOrderService,  super: Neutral.Domain.Orders.IOrderSink,        rel: IMPLEMENTS, q: [Q3]}
+  - {sub: Neutral.Services.EmailNotifier,         super: Neutral.Domain.Notifications.INotifier,  rel: IMPLEMENTS, q: [Q3]}
+  - {sub: Neutral.Services.SmsNotifier,           super: Neutral.Domain.Notifications.INotifier,  rel: IMPLEMENTS, q: [Q3]}
+  - {sub: Neutral.Host.OrderEntity,               super: Neutral.Services.Data.IEntity,           rel: IMPLEMENTS, q: [Q3]}
+  - {sub: Neutral.Services.SummaryReport,         super: Neutral.Domain.Reporting.ReportBase,     rel: INHERITS,   q: [Q4]}
+  - {sub: Neutral.Services.DetailedReport,        super: Neutral.Services.SummaryReport,          rel: INHERITS,   q: [Q4]}
+
+# --- member mapping -----------------------------------------------------------
+member_map:
+  # OVERRIDES — two levels deep, and a property-free chain.
+  - {impl: Neutral.Services.SummaryReport.Render,   target: Neutral.Domain.Reporting.ReportBase.Render,   rel: OVERRIDES, q: [Q4]}
+  - {impl: Neutral.Services.SummaryReport.Describe, target: Neutral.Domain.Reporting.ReportBase.Describe, rel: OVERRIDES, q: [Q4]}
+  - {impl: Neutral.Services.DetailedReport.Render,  target: Neutral.Services.SummaryReport.Render,        rel: OVERRIDES, q: [Q4]}
+
+  # IMPLEMENTS_MEMBER — note the overloads must pair by ARITY, not by name, and
+  # the explicit implementations are not named `Accept` at all.
+  - {impl: Neutral.Services.OrderService.Accept#1,         target: Neutral.Domain.Orders.IOrderSink.Accept#1, rel: IMPLEMENTS_MEMBER, q: [Q3, Q5]}
+  - {impl: Neutral.Services.OrderService.Accept#2,         target: Neutral.Domain.Orders.IOrderSink.Accept#2, rel: IMPLEMENTS_MEMBER, q: [Q3, Q5]}
+  - {impl: Neutral.Services.OrderService.Discard,          target: Neutral.Domain.Orders.IOrderSink.Discard,  rel: IMPLEMENTS_MEMBER, q: [Q3]}
+  - {impl: Neutral.Services.AuditingOrderService.Accept#1, target: Neutral.Domain.Orders.IOrderSink.Accept#1, rel: IMPLEMENTS_MEMBER, q: [Q3, Q5]}
+  - {impl: Neutral.Services.AuditingOrderService.Accept#2, target: Neutral.Domain.Orders.IOrderSink.Accept#2, rel: IMPLEMENTS_MEMBER, q: [Q3, Q5]}
+  - {impl: Neutral.Services.AuditingOrderService.Discard,  target: Neutral.Domain.Orders.IOrderSink.Discard,  rel: IMPLEMENTS_MEMBER, q: [Q3]}
+  - {impl: Neutral.Services.ExplicitOrderService.Accept#1, target: Neutral.Domain.Orders.IOrderSink.Accept#1, rel: IMPLEMENTS_MEMBER, explicit: true, q: [Q3]}
+  - {impl: Neutral.Services.ExplicitOrderService.Accept#2, target: Neutral.Domain.Orders.IOrderSink.Accept#2, rel: IMPLEMENTS_MEMBER, explicit: true, q: [Q3]}
+  - {impl: Neutral.Services.ExplicitOrderService.Discard,  target: Neutral.Domain.Orders.IOrderSink.Discard,  rel: IMPLEMENTS_MEMBER, explicit: true, q: [Q3]}
+  - {impl: Neutral.Services.EmailNotifier.Notify,          target: Neutral.Domain.Notifications.INotifier.Notify, rel: IMPLEMENTS_MEMBER, q: [Q3]}
+  - {impl: Neutral.Services.SmsNotifier.Notify,            target: Neutral.Domain.Notifications.INotifier.Notify, rel: IMPLEMENTS_MEMBER, q: [Q3]}
+  - {impl: Neutral.Host.OrderEntity.Id,                    target: Neutral.Services.Data.IEntity.Id,              rel: IMPLEMENTS_MEMBER, q: [Q3]}
+
+# --- calls --------------------------------------------------------------------
+#
+# METHOD INVOCATIONS ONLY. Object creation is scored separately under `creations`
+# below, because several types here use an IMPLICIT default constructor that no
+# source line declares — scoring `new X()` as a call to a constructor that was
+# never written would penalise whichever engine happens not to synthesize it.
+#
+# `receiver` records how the call is written, which is what a syntax-only
+# analyzer actually sees:
+#   bare   — no receiver at all (`Announce(x)`)
+#   this   — `this.Foo(x)`
+#   base   — `base.Foo()`
+#   field  — `_sink.Accept(x)`
+#   local  — a local or parameter (`runner.Run()`)
+#   static — through a type name (`PriceCalculator.Apply(...)`)
+calls:
+  # ---- Domain ----
+  - {id: c01, caller: Neutral.Domain.Reporting.ReportBase.RaiseRendered, path: src/Domain/Reporting.cs, line: 19, target: external, callee_external: "System.Action<T>.Invoke", receiver: field, dispatch: virtual, q: [Q11], evidence: {quote: "Rendered?.Invoke(payload);"}}
+  - {id: c02, caller: Neutral.Domain.Notifications.NotificationLog.Add, path: src/Domain/Notifications.cs, line: 25, target: external, callee_external: "System.Collections.Generic.List<T>.Add", receiver: field, dispatch: direct, q: [Q8], evidence: {quote: "_entries.Add(entry);"}}
+
+  # ---- Services ----
+  - {id: c03, caller: Neutral.Services.OrderService.Accept#1, path: src/Services/OrderService.cs, line: 14, target: internal, callee: Neutral.Domain.Orders.PriceCalculator.Apply, receiver: static, dispatch: direct, cross_project: true, q: [Q1, Q2], evidence: {quote: "var discounted = PriceCalculator.Apply(order.Total, 0.9m);"}}
+  - {id: c04, caller: Neutral.Services.OrderService.Accept#1, path: src/Services/OrderService.cs, line: 15, target: external, callee_external: "System.Collections.Generic.List<T>.Add", receiver: field, dispatch: direct, q: [Q8], evidence: {quote: "_accepted.Add(order with { Total = discounted });"}}
+  - {id: c05, caller: Neutral.Services.OrderService.Accept#2, path: src/Services/OrderService.cs, line: 19, target: internal, callee: Neutral.Services.OrderService.Accept#1, receiver: bare, dispatch: direct, q: [Q5], evidence: {quote: "public int Accept(Order order, bool force) => force ? Accept(order) : -1;"}}
+  - {id: c06, caller: Neutral.Services.OrderService.Discard, path: src/Services/OrderService.cs, line: 21, target: external, callee_external: "System.Collections.Generic.List<T>.RemoveAll", receiver: field, dispatch: direct, q: [Q8], evidence: {quote: "public void Discard(int orderId) => _accepted.RemoveAll(o => o.Id == orderId);"}}
+  - {id: c07, caller: Neutral.Services.SummaryReport.Render, path: src/Services/Reports.cs, line: 10, target: internal, callee: Neutral.Domain.Reporting.ReportBase.RaiseRendered, receiver: bare, dispatch: direct, cross_project: true, q: [Q4], evidence: {quote: "RaiseRendered(\"summary\");"}}
+  - {id: c08, caller: Neutral.Services.DetailedReport.Render, path: src/Services/Reports.cs, line: 24, target: internal, callee: Neutral.Services.SummaryReport.Render, receiver: base, dispatch: direct, q: [Q4], evidence: {quote: "var head = base.Render();"}}
+  - {id: c09, caller: Neutral.Services.Data.Repository.Add, path: src/Services/Repository.cs, line: 13, target: external, callee_external: "System.Collections.Generic.List<T>.Add", receiver: field, dispatch: direct, q: [Q8], evidence: {quote: "public void Add(T item) => _items.Add(item);"}}
+  - {id: c10, caller: Neutral.Services.Data.RepositoryExtensions.AddAll, path: src/Services/Repository.cs, line: 27, target: internal, callee: Neutral.Services.Data.Repository.Add, receiver: local, dispatch: direct, q: [Q2], evidence: {quote: "repository.Add(item);"}}
+  - {id: c11, caller: Neutral.Services.EmailNotifier.Notify, path: src/Services/Notifiers.cs, line: 12, target: internal, callee: Neutral.Domain.Notifications.NotificationLog.Add, receiver: field, dispatch: direct, cross_project: true, q: [Q1], evidence: {quote: "_log.Add(message);"}}
+  - {id: c12, caller: Neutral.Services.OrderValidator.IsValid, path: src/Services/Validation.Identity.cs, line: 14, target: internal, callee: Neutral.Services.OrderValidator.HasIdentity, receiver: this, dispatch: direct, q: [Q10], evidence: {quote: "return this.HasIdentity(order) && HasPositiveTotal(order);"}}
+  - {id: c13, caller: Neutral.Services.OrderValidator.IsValid, path: src/Services/Validation.Identity.cs, line: 14, target: internal, callee: Neutral.Services.OrderValidator.HasPositiveTotal, receiver: bare, dispatch: direct, q: [Q10], evidence: {quote: "return this.HasIdentity(order) && HasPositiveTotal(order);"}}
+  - {id: c14, caller: Neutral.Services.Text.Formatter.Render, path: src/Services/Formatting.cs, line: 7, target: external, callee_external: "System.String.Trim", receiver: local, dispatch: direct, q: [Q8], evidence: {quote: "public static string Render(string value) => value.Trim();"}}
+  - {id: c15, caller: Neutral.Services.Legacy.Formatter.Render, path: src/Services/Formatting.Legacy.cs, line: 7, target: external, callee_external: "System.String.ToUpperInvariant", receiver: local, dispatch: direct, q: [Q8], evidence: {quote: "public static string Render(string value) => value.ToUpperInvariant();"}}
+
+  # ---- Host ----
+  - {id: c16, caller: Neutral.Host.Program.Main, path: src/Host/Program.cs, line: 18, target: internal, callee: Neutral.Host.ServiceRegistration.AddNeutralServices, receiver: local, dispatch: direct, extension: true, q: [Q9], evidence: {quote: "services.AddNeutralServices();"}}
+  - {id: c17, caller: Neutral.Host.Program.Main, path: src/Host/Program.cs, line: 21, target: internal, callee: Neutral.Host.OrderRunner.Run, receiver: local, dispatch: direct, q: [Q1], evidence: {quote: "runner.Run();"}}
+  - {id: c18, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 46, target: internal, callee: Neutral.Domain.Orders.IOrderSink.Accept#1, receiver: field, dispatch: interface, cross_project: true, q: [Q5], evidence: {quote: "_sink.Accept(order);"}}
+  - {id: c19, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 49, target: internal, callee: Neutral.Domain.Orders.IOrderSink.Accept#2, receiver: field, dispatch: interface, cross_project: true, q: [Q5], evidence: {quote: "_sink.Accept(order, force: true);"}}
+  - {id: c20, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 52, target: internal, callee: Neutral.Domain.Orders.PriceCalculator.Apply, receiver: static, dispatch: direct, cross_project: true, q: [Q1], evidence: {quote: "var raised = PriceCalculator.Apply(order.Total, 1.2m);"}}
+  - {id: c21, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 55, target: internal, callee: Neutral.Domain.Orders.PriceFormatter.Format#int, receiver: static, dispatch: direct, q: [Q5], evidence: {quote: "var byInt = PriceFormatter.Format(3);"}}
+  - {id: c22, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 56, target: internal, callee: Neutral.Domain.Orders.PriceFormatter.Format#Money, receiver: static, dispatch: direct, q: [Q5], evidence: {quote: "var byMoney = PriceFormatter.Format(raised);"}}
+  - {id: c23, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 59, target: internal, callee: Neutral.Host.OrderRunner.Announce, receiver: bare, dispatch: direct, q: [Q2], evidence: {quote: "Announce(byInt + byMoney);"}}
+  - {id: c24, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 62, target: internal, callee: Neutral.Services.Data.RepositoryExtensions.AddAll, receiver: field, dispatch: direct, extension: true, q: [Q2], evidence: {quote: "_repository.AddAll(new[] { new OrderEntity(order.Id) });"}}
+  - {id: c25, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 65, target: internal, callee: Neutral.Services.Data.Repository.Add, receiver: field, dispatch: direct, q: [Q2], evidence: {quote: "_repository.Add(new OrderEntity(2));"}}
+  - {id: c26, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 68, target: external, callee_external: "System.Text.Json.JsonSerializer.Serialize", receiver: static, dispatch: direct, q: [Q8], evidence: {quote: "var json = JsonSerializer.Serialize(order);"}}
+  - {id: c27, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 73, target: internal, callee: Neutral.Services.Text.Formatter.Render, receiver: static, dispatch: direct, ambiguous_simple_name: true, q: [Q8], evidence: {quote: "_notifier.Notify(Formatter.Render(json));"}}
+  - {id: c28, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 73, target: internal, callee: Neutral.Domain.Notifications.INotifier.Notify, receiver: field, dispatch: interface, cross_project: true, q: [Q3], evidence: {quote: "_notifier.Notify(Formatter.Render(json));"}}
+  - {id: c29, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 76, target: internal, callee: Neutral.Host.ReportFactory.Create, receiver: static, dispatch: direct, q: [Q6], evidence: {quote: "var report = ReportFactory.Create();"}}
+  - {id: c30, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 77, target: internal, callee: Neutral.Services.SummaryReport.Render, receiver: local, dispatch: virtual, q: [Q4], evidence: {quote: "report.Render();"}}
+  - {id: c31, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 79, target: internal, callee: Neutral.Host.OrderRunner.DynamicCall, receiver: bare, dispatch: direct, q: [Q12], evidence: {quote: "DynamicCall(order);"}}
+  - {id: c32, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 80, target: internal, callee: Neutral.Host.OrderRunner.ReflectionCall, receiver: bare, dispatch: direct, q: [Q12], evidence: {quote: "ReflectionCall();"}}
+  - {id: c33, caller: Neutral.Host.OrderRunner.Announce, path: src/Host/Program.cs, line: 85, target: internal, callee: Neutral.Domain.Notifications.INotifier.Notify, receiver: field, dispatch: interface, cross_project: true, q: [Q3], evidence: {quote: "_notifier.Notify(message);"}}
+  - {id: c34, caller: Neutral.Host.OrderRunner.DynamicCall, path: src/Host/Program.cs, line: 92, target: unresolvable, reason: dynamic, receiver: local, q: [Q12], evidence: {quote: "loose.Accept(order);"}}
+  - {id: c35, caller: Neutral.Host.OrderRunner.ReflectionCall, path: src/Host/Program.cs, line: 99, target: external, callee_external: "System.Type.GetMethod", receiver: local, dispatch: direct, q: [Q12], evidence: {quote: "var method = type.GetMethod(\"AcceptedCount\");"}}
+  - {id: c36, caller: Neutral.Host.OrderRunner.ReflectionCall, path: src/Host/Program.cs, line: 100, target: external, callee_external: "System.Activator.CreateInstance", receiver: static, dispatch: direct, reflection_entry_point: true, q: [Q12], evidence: {quote: "method?.Invoke(Activator.CreateInstance(type), null);"}}
+  - {id: c37, caller: Neutral.Host.OrderRunner.ReflectionCall, path: src/Host/Program.cs, line: 100, target: external, callee_external: "System.Reflection.MethodBase.Invoke", receiver: local, dispatch: direct, reflection_entry_point: true, q: [Q12], evidence: {quote: "method?.Invoke(Activator.CreateInstance(type), null);"}}
+  - {id: c38, caller: Neutral.Host.ServiceRegistration.AddNeutralServices, path: src/Host/ServiceRegistration.cs, line: 15, target: external, callee_external: "Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton", receiver: local, dispatch: direct, q: [Q9], evidence: {quote: "services.AddSingleton<INotifier, EmailNotifier>();"}}
+  - {id: c39, caller: Neutral.Host.ServiceRegistration.AddNeutralServices, path: src/Host/ServiceRegistration.cs, line: 16, target: external, callee_external: "Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddScoped", receiver: local, dispatch: direct, q: [Q9], evidence: {quote: "services.AddScoped<IOrderSink, OrderService>();"}}
+  - {id: c40, caller: Neutral.Host.ServiceRegistration.AddNeutralServices, path: src/Host/ServiceRegistration.cs, line: 17, target: external, callee_external: "Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddTransient", receiver: local, dispatch: direct, q: [Q9], evidence: {quote: "services.AddTransient<OrderValidator>();"}}
+  - {id: c41, caller: Neutral.Host.ServiceRegistration.AddNeutralServices, path: src/Host/ServiceRegistration.cs, line: 20, target: external, callee_external: "Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddKeyedScoped", receiver: local, dispatch: direct, q: [Q9], evidence: {quote: "services.AddKeyedScoped<IOrderSink, AuditingOrderService>(\"audit\");"}}
+
+# --- object creation ----------------------------------------------------------
+creations:
+  - {id: n01, caller: Neutral.Domain.Orders.PriceCalculator.Apply, path: src/Domain/Orders.cs, line: 55, type: Neutral.Domain.Orders.Money, q: [Q6]}
+  - {id: n02, caller: Neutral.Domain.Notifications.NotificationLog._entries, path: src/Domain/Notifications.cs, line: 12, type_external: "System.Collections.Generic.List<T>", in_field_initializer: true, q: [Q6]}
+  - {id: n03, caller: Neutral.Services.OrderService._accepted, path: src/Services/OrderService.cs, line: 8, type_external: "System.Collections.Generic.List<T>", in_field_initializer: true, q: [Q6]}
+  - {id: n04, caller: Neutral.Services.Data.Repository._items, path: src/Services/Repository.cs, line: 11, type_external: "System.Collections.Generic.List<T>", in_field_initializer: true, q: [Q6]}
+  - {id: n05, caller: Neutral.Services.EmailNotifier._log, path: src/Services/Notifiers.cs, line: 7, type: Neutral.Domain.Notifications.NotificationLog, in_field_initializer: true, q: [Q6]}
+  - {id: n06, caller: Neutral.Host.Program.Main, path: src/Host/Program.cs, line: 15, type_external: "Microsoft.Extensions.DependencyInjection.ServiceCollection", q: [Q6]}
+  - {id: n07, caller: Neutral.Host.Program.Main, path: src/Host/Program.cs, line: 20, type: Neutral.Host.OrderRunner, q: [Q6]}
+  - {id: n08, caller: Neutral.Host.Program.Main, path: src/Host/Program.cs, line: 20, type: Neutral.Services.OrderService, q: [Q6]}
+  - {id: n09, caller: Neutral.Host.Program.Main, path: src/Host/Program.cs, line: 20, type: Neutral.Services.EmailNotifier, q: [Q6]}
+  - {id: n10, caller: Neutral.Host.OrderRunner._repository, path: src/Host/Program.cs, line: 31, type: Neutral.Services.Data.Repository, in_field_initializer: true, q: [Q6]}
+  - {id: n11, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 43, type: Neutral.Domain.Orders.Order, q: [Q6]}
+  - {id: n12, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 43, type: Neutral.Domain.Orders.Money, q: [Q6]}
+  - {id: n13, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 62, type: Neutral.Host.OrderEntity, q: [Q6]}
+  - {id: n14, caller: Neutral.Host.OrderRunner.Run, path: src/Host/Program.cs, line: 65, type: Neutral.Host.OrderEntity, q: [Q6]}
+  - {id: n15, caller: Neutral.Host.ReportFactory.Create, path: src/Host/Program.cs, line: 106, type: Neutral.Services.DetailedReport, q: [Q6]}
+
+# --- dependency injection (Engine T's capability; Engine R models none of this) -
+di:
+  - {path: src/Host/ServiceRegistration.cs, line: 15, api: AddSingleton, service: INotifier,  implementation: EmailNotifier,        lifetime: singleton, q: [Q9]}
+  - {path: src/Host/ServiceRegistration.cs, line: 16, api: AddScoped,    service: IOrderSink, implementation: OrderService,         lifetime: scoped,    q: [Q9]}
+  - {path: src/Host/ServiceRegistration.cs, line: 17, api: AddTransient, service: OrderValidator, implementation: OrderValidator,   lifetime: transient, self: true, q: [Q9]}
+  - {path: src/Host/ServiceRegistration.cs, line: 20, api: AddKeyedScoped, service: IOrderSink, implementation: AuditingOrderService, lifetime: scoped, key: "audit", q: [Q9]}
+
+# --- project structure --------------------------------------------------------
+projects:
+  - {id: src/Domain/Domain.csproj,   assembly: Neutral.Domain,   references: [],                                                  packages: [], q: [Q7]}
+  - {id: src/Services/Services.csproj, assembly: Neutral.Services, references: [src/Domain/Domain.csproj],                        packages: [], q: [Q7]}
+  - {id: src/Host/Host.csproj,       assembly: Neutral.Host,     references: [src/Domain/Domain.csproj, src/Services/Services.csproj], packages: ["Microsoft.Extensions.DependencyInjection"], q: [Q7]}
+
+# --- facts that must NOT appear -----------------------------------------------
+#
+# Precision is meaningless without these. A 400-line corpus gives an engine few
+# chances to be wrong, so the specific wrong answers each engine's design invites
+# are named here and checked for explicitly.
+expected_absent:
+  - class: call
+    subject: Neutral.Host.OrderRunner.Run
+    object: Neutral.Services.Legacy.Formatter.Render
+    why: >-
+      Two types are named Formatter. The `using Neutral.Services.Text;` in
+      Program.cs decides that line 73 calls the Text one. An analyzer that indexes
+      types by bare name repo-wide has to pick one arbitrarily, and picking Legacy
+      is a wrong answer, not a missing one.
+
+  - class: call
+    subject: Neutral.Host.OrderRunner.Run
+    object: Neutral.Services.OrderService.Accept#1
+    why: >-
+      Line 46 calls through IOrderSink. The compile-time target is the interface
+      member; which implementation runs is not decidable here. Pointing the call
+      straight at a concrete class fabricates a fact the source does not contain.
+
+  - class: call
+    subject: Neutral.Host.OrderRunner.DynamicCall
+    object: Neutral.Services.OrderService.Accept#1
+    why: >-
+      `loose` is dynamic. No target is knowable at compile time, so naming one is
+      fabrication — the honest output is an unresolved reference with evidence.
+
+  - class: member_map
+    subject: Neutral.Services.OrderService.Accept#1
+    object: Neutral.Domain.Orders.IOrderSink.Accept#2
+    why: >-
+      The one-argument implementation satisfies the one-argument interface member.
+      Pairing by name rather than by signature cross-wires the overloads.
+
+  - class: hierarchy
+    subject: Neutral.Services.DetailedReport
+    object: Neutral.Domain.Reporting.ReportBase
+    why: >-
+      DetailedReport declares SummaryReport as its base. ReportBase is reachable
+      transitively, but storing the closure as a declared relationship makes
+      "which type actually declares this" unanswerable.
+
+  - class: hierarchy
+    subject: Neutral.Services.OrderService
+    object: Neutral.Domain.Notifications.INotifier
+    why: >-
+      OrderService implements IOrderSink only. Both interfaces declare a single
+      method taking one argument, so a shape-based matcher could confuse them.
+
+# --- counts (must equal the number of rows above) -----------------------------
+counts:
+  declarations: 104
+  hierarchy: 8
+  member_map: 15
+  calls: 41
+  creations: 15
+  di: 4
+  projects: 3
+  expected_absent: 6

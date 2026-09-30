@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Neutral.Domain</RootNamespace>
+    <AssemblyName>Neutral.Domain</AssemblyName>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Neutral.Host</RootNamespace>
+    <AssemblyName>Neutral.Host</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Q7: two project references and one NuGet package -->
+    <ProjectReference Include="../Domain/Domain.csproj" />
+    <ProjectReference Include="../Services/Services.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+  </ItemGroup>
+</Project>
