@@ -1,5 +1,8 @@
 # Benchmark: tree-sitter vs Roslyn for .NET dependency graphs
 
+> For a plain-language version suitable for a non-engineering audience, see
+> [docs/parser-comparison.md](../docs/parser-comparison.md).
+
 ## The question
 
 Which parser should we rely on to build a dependency graph for a .NET codebase?
@@ -60,17 +63,24 @@ mis-scoring:
 
 ## What is measured
 
-**Calls are decomposed into levels rather than collapsed into one F1**, because a
-single number would hide the thing being measured:
+**Calls are graded by four nested questions rather than one F1**, because a single
+number would hide the thing being measured:
 
-| Level | Question |
-|---|---|
-| L0 | Did it find that this member calls anything? |
-| L2 | Is the final identifier of the target right? |
-| L3a | Does it reach the right method on the right **type**? |
-| L3b | Does it reach the right **overload**? |
+| # | Question | Field |
+|---|---|---|
+| 1 | Did it notice this member makes a call at all? | `found_call` |
+| 2 | Did it get the called method's **name** right? | `right_name` |
+| 3 | Did it reach that method on the right **class**? | `right_class` |
+| 4 | Did it reach the right **overload**? | `right_overload` |
 
-`L3a − L3b` is the overload story; `L2 − L3a` is the namespace/receiver story.
+Worked example — `_sink.Accept(order, force: true)`, where `_sink` is an
+`IOrderSink` and `Accept` has two overloads:
+
+- Roslyn reaches `IOrderSink.Accept(Order, bool)` — passes all four
+- tree-sitter records the text `"_sink.Accept"` — passes 1 and 2 only
+
+The gap between 3 and 4 is the overload story; the gap between 2 and 3 is the
+namespace/receiver story.
 
 All call metrics are per **(caller, callee) pair**, not per call site: T de-duplicates
 edges in its builder, so counting sites would penalise a modelling choice rather than
@@ -93,10 +103,10 @@ Recall against the golden, with Wilson 95% intervals in the harness output:
 |---|---|---|
 | declarations F1 | **100.0%** | 96.9% |
 | owner (right declaring type) | 100.0% | 100.0% |
-| L0 — found the caller | 100.0% | 89.5% |
-| L2 — right target *name* | 87.5% | 77.5% |
-| **L3a — right type + name** | **100.0%** | **4.0%** |
-| **L3b — right overload** | **100.0%** | **4.0%** |
+| 1. found the call | 100.0% | 89.5% |
+| 2. right method *name* | 87.5% | 77.5% |
+| **3. right class** | **100.0%** | **4.0%** |
+| **4. right overload** | **100.0%** | **4.0%** |
 | overload discrimination | 100% (chance 50%) | 0% (chance 50%) |
 | precision when it *does* resolve | 100% (25/25) | 100% (1/1) |
 
@@ -135,9 +145,9 @@ trust the rest:
 5. `last_segment` split generics at the first `<`, turning `List<T>.Add` into `List`
    and scoring every generic call as a miss.
 
-A monotonicity assertion (`TP(L3b) ⊆ TP(L3a) ⊆ TP(L2)`) caught a sixth: L3a reported
-*fewer* true positives than L3b, because keying on less information merged the two
-overloads into one entry.
+A nesting assertion (each stricter question must have no more hits than the looser
+one) caught a sixth: `right_class` reported *fewer* hits than `right_overload`,
+because keying on less information merged the two overloads into one entry.
 
 ## Running it
 
@@ -172,8 +182,8 @@ curl -X POST http://localhost:8090/v1/local/analyze \
 
 **Does not**
 
-- **Scale.** 400 lines cannot separate 97% from 99% — the intervals show it (R's L3b
-  is 100% but `[87%–100%]`). Nothing here predicts behaviour on a large solution.
+- **Scale.** 400 lines cannot separate 97% from 99% — the intervals show it (R's
+  right-overload score is 100% but `[87%–100%]`). Nothing here predicts behaviour on a large solution.
 - **Any language other than C#.** T covers 20+; that is a real advantage this
   benchmark does not measure.
 - Performance, memory, or incremental re-scan behaviour.
@@ -186,7 +196,7 @@ curl -X POST http://localhost:8090/v1/local/analyze \
 ## Status
 
 Implemented: corpus, golden + verifying loader, both Neo4j readers, the join with
-line calibration, declaration metrics, call metrics (L0/L2/L3a/L3b), overload
+line calibration, declaration metrics, the four call metrics, overload
 discrimination, uncertainty calibration, Wilson intervals.
 
 Not yet: the independent text scanner (which cross-checks the golden's *completeness*,

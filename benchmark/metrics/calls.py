@@ -7,12 +7,21 @@ reach the right NAME while never reaching a declaration. Reporting one figure
 would either flatter it (crediting the name) or bury it (scoring only the
 symbol). So:
 
-  L0  caller coverage   — did the engine find that this member calls anything?
-  L2  target name       — is the final identifier of the target correct?
-  L3a target type+name  — does it reach the right method on the right TYPE?
-  L3b target exact      — does it reach the right OVERLOAD?
+Four nested questions, each stricter than the last, asked of the same call:
 
-`L3a - L3b` is the overload story; `L2 - L3a` is the namespace/receiver story.
+  1. found_call     — did it notice this member makes a call at all?
+  2. right_name     — did it get the called method's NAME right?
+  3. right_class    — did it reach that method on the right CLASS?
+  4. right_overload — did it reach the right OVERLOAD of that method?
+
+Worked example, `_sink.Accept(order, force: true)` where `_sink` is an
+`IOrderSink` and `Accept` has two overloads:
+
+  Roslyn      reaches IOrderSink.Accept(Order, bool)  -> passes all four
+  tree-sitter records the text "_sink.Accept"         -> passes 1 and 2 only
+
+The gap between `right_class` and `right_overload` is the overload story; the gap
+between `right_name` and `right_class` is the namespace/receiver story.
 
 Everything is de-duplicated to (caller, callee) PAIRS. Tree-sitter de-duplicates
 edges on (src, dst, type) in its builder, so counting call sites would penalise it
@@ -66,10 +75,10 @@ def last_segment(target: str | None) -> str | None:
 @dataclass
 class CallReport:
     engine: str
-    l0: Score
-    l2: Score
-    l3a: Score
-    l3b: Score
+    found_call: Score
+    right_name: Score
+    right_class: Score
+    right_overload: Score
     bare_call_share: float
     overload_total: int
     overload_correct: int
@@ -91,9 +100,15 @@ class CallReport:
         A violation is a normalization bug, not a finding, so it is asserted rather
         than reported.
         """
-        assert self.l3b.true_positives <= self.l3a.true_positives <= self.l2.true_positives, (
-            f"{self.engine}: call levels not monotonic "
-            f"(L3b {self.l3b.true_positives} L3a {self.l3a.true_positives} L2 {self.l2.true_positives})"
+        assert (
+            self.right_overload.true_positives
+            <= self.right_class.true_positives
+            <= self.right_name.true_positives
+        ), (
+            f"{self.engine}: levels not nested "
+            f"(overload {self.right_overload.true_positives}, "
+            f"class {self.right_class.true_positives}, "
+            f"name {self.right_name.true_positives})"
         )
 
 
@@ -202,7 +217,7 @@ def evaluate(graph, uid_to_golden: dict[str, str], golden) -> CallReport:
     internal_reference = [u for u in reference if u.internal]
     internal_produced = [u for u in produced if u.internal]
 
-    l0 = _match(
+    found_call = _match(
         [CallUnit(c, None, None, None, False) for c in sorted({u.caller for u in produced})],
         [CallUnit(c, None, None, None, False) for c in sorted({u.caller for u in reference})],
         key=lambda u: u.caller,
@@ -211,10 +226,10 @@ def evaluate(graph, uid_to_golden: dict[str, str], golden) -> CallReport:
     # without symbol resolution can do, and it should get credit for it.
     named_produced = [u for u in produced if u.callee_name]
     named_reference = [u for u in reference if u.callee_name]
-    l2 = _match(named_produced, named_reference, key=lambda u: (u.caller, u.callee_name))
-    l3a = _match(internal_produced, internal_reference,
+    right_name = _match(named_produced, named_reference, key=lambda u: (u.caller, u.callee_name))
+    right_class = _match(internal_produced, internal_reference,
                  key=lambda u: (u.caller, u.callee_owner, u.callee_name))
-    l3b = _match(internal_produced, internal_reference,
+    right_overload = _match(internal_produced, internal_reference,
                  key=lambda u: (u.caller, u.callee_id))
 
     # Overload discrimination, restricted to calls whose true target is overloaded.
@@ -262,10 +277,10 @@ def evaluate(graph, uid_to_golden: dict[str, str], golden) -> CallReport:
 
     report = CallReport(
         engine=graph.engine,
-        l0=l0,
-        l2=l2,
-        l3a=l3a,
-        l3b=l3b,
+        found_call=found_call,
+        right_name=right_name,
+        right_class=right_class,
+        right_overload=right_overload,
         bare_call_share=golden.bare_call_share(),
         overload_total=len(overload_calls),
         overload_correct=overload_correct,
